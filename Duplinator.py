@@ -1,26 +1,17 @@
 import os
 import imagehash
-from PIL import Image
+from PIL import Image, ImageTk
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 import threading
 import queue
+from datetime import datetime
 
-# Global dictionary to store checkbox variables
+# Global dictionary to store checkbox variables and thumbnails
 file_vars = {}
+thumbnails = {}  # Global to persist thumbnails
 
 def find_duplicate_images(folder_path, hash_size=8, threshold=5):
-    """
-    Finds pairs of duplicate images within a folder.
-
-    Args:
-        folder_path: The path to the folder containing the images.
-        hash_size: The size of the image hash (higher values are more precise but slower).
-        threshold: The maximum difference between hashes to consider images duplicates (lower is stricter).
-
-    Returns:
-        A list of tuples, each containing two filenames that are duplicates.
-    """
     image_hashes = {}
     duplicates = []
 
@@ -48,7 +39,7 @@ def find_duplicate_images(folder_path, hash_size=8, threshold=5):
 
 # GUI Setup
 root = tk.Tk()
-root.title("Duplinator")
+root.title("Duplicate Image Finder")
 
 # Folder Selection
 folder_frame = tk.Frame(root)
@@ -113,6 +104,41 @@ status_var = tk.StringVar(value="Ready")
 status_label = tk.Label(root, textvariable=status_var)
 status_label.pack(side=tk.BOTTOM, fill=tk.X)
 
+# Progress Window
+progress_window = None
+progress_bar = None
+
+def show_progress_window():
+    global progress_window, progress_bar
+    progress_window = tk.Toplevel(root)
+    progress_window.title("Processing")
+    progress_window.geometry("300x100")
+    progress_window.transient(root)
+    progress_window.grab_set()
+    tk.Label(progress_window, text="Scanning for duplicates...").pack(pady=10)
+    progress_bar = ttk.Progressbar(progress_window, mode="indeterminate")
+    progress_bar.pack(pady=10, fill=tk.X, padx=20)
+    progress_bar.start()
+
+    # Center the progress window over the main window
+    root.update_idletasks()
+    main_x = root.winfo_x()
+    main_y = root.winfo_y()
+    main_width = root.winfo_width()
+    main_height = root.winfo_height()
+    progress_width = 300
+    progress_height = 100
+    x = main_x + (main_width // 2) - (progress_width // 2)
+    y = main_y + (main_height // 2) - (progress_height // 2)
+    progress_window.geometry(f"{progress_width}x{progress_height}+{x}+{y}")
+
+def hide_progress_window():
+    global progress_window
+    if progress_window:
+        progress_bar.stop()
+        progress_window.destroy()
+        progress_window = None
+
 # Functions for GUI Logic
 def run_duplicate_finder():
     folder_path = folder_path_var.get()
@@ -123,11 +149,10 @@ def run_duplicate_finder():
     hash_size = hash_size_var.get()
     threshold = threshold_var.get()
 
-    # Clear previous results
     for widget in inner_frame.winfo_children():
         widget.destroy()
 
-    status_var.set("Processing...")
+    show_progress_window()
     find_button.config(state=tk.DISABLED)
 
     result_queue = queue.Queue()
@@ -150,35 +175,94 @@ def check_queue(result_queue):
             messagebox.showerror("Error", str(result))
         else:
             display_results(result)
+        hide_progress_window()
         status_var.set("Done.")
         find_button.config(state=tk.NORMAL)
     except queue.Empty:
         root.after(100, check_queue, result_queue)
 
+def get_file_info(filepath):
+    try:
+        stat = os.stat(filepath)
+        size = stat.st_size / 1024  # Size in KB
+        with Image.open(filepath) as img:
+            width, height = img.size
+        created = datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S')
+        modified = datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+        return size, (width, height), created, modified
+    except Exception as e:
+        print(f"Error retrieving info for {filepath}: {e}")
+        return None, (0, 0), "Unknown", "Unknown"
+
 def display_results(duplicate_pairs):
-    global file_vars
+    global file_vars, thumbnails
     for widget in inner_frame.winfo_children():
         widget.destroy()
+    thumbnails.clear()  # Clear previous thumbnails
     if not duplicate_pairs:
         tk.Label(inner_frame, text="No duplicate images found.").pack()
         file_vars = {}
     else:
-        # Collect all unique filenames
         all_files = set()
         for pair in duplicate_pairs:
             all_files.update(pair)
         file_vars = {file: tk.BooleanVar() for file in all_files}
-        # Display each pair with checkboxes
-        for pair in duplicate_pairs:
+        folder_path = folder_path_var.get()
+
+        for i, (filename1, filename2) in enumerate(duplicate_pairs):
+            if i > 0:
+                ttk.Separator(inner_frame, orient="horizontal").pack(fill=tk.X, pady=5)
+
             subframe = tk.Frame(inner_frame)
-            subframe.pack(fill=tk.X)
-            filename1, filename2 = pair
+            subframe.pack(fill=tk.X, pady=5)
+
+            # File 1
+            file1_frame = tk.Frame(subframe)
+            file1_frame.pack(side=tk.LEFT, padx=10)
             var1 = file_vars[filename1]
-            tk.Checkbutton(subframe, variable=var1).pack(side=tk.LEFT)
-            tk.Label(subframe, text=filename1).pack(side=tk.LEFT)
+            tk.Checkbutton(file1_frame, variable=var1).pack(side=tk.LEFT)
+
+            filepath1 = os.path.join(folder_path, filename1)
+            size1, (width1, height1), created1, modified1 = get_file_info(filepath1)
+            if size1 is not None:
+                try:
+                    print(f"Loading thumbnail for {filename1} at {filepath1}")
+                    img = Image.open(filepath1)
+                    img = img.resize((100, 100), Image.Resampling.LANCZOS)
+                    thumbnails[filename1] = ImageTk.PhotoImage(img)
+                    thumbnail_label = tk.Label(file1_frame, image=thumbnails[filename1])
+                    thumbnail_label.pack()
+                    print(f"Thumbnail for {filename1} loaded and packed")
+                except Exception as e:
+                    print(f"Error loading thumbnail for {filename1}: {e}")
+                    tk.Label(file1_frame, text="[Thumbnail Error]").pack()
+                tk.Label(file1_frame, text=f"{filename1}\nSize: {size1:.2f} KB\nRes: {width1}x{height1}\nCreated: {created1}\nModified: {modified1}").pack()
+            else:
+                tk.Label(file1_frame, text=f"{filename1}\n[Error retrieving info]").pack()
+
+            # File 2
+            file2_frame = tk.Frame(subframe)
+            file2_frame.pack(side=tk.LEFT, padx=10)
             var2 = file_vars[filename2]
-            tk.Checkbutton(subframe, variable=var2).pack(side=tk.LEFT)
-            tk.Label(subframe, text=filename2).pack(side=tk.LEFT)
+            tk.Checkbutton(file2_frame, variable=var2).pack(side=tk.LEFT)
+
+            filepath2 = os.path.join(folder_path, filename2)
+            size2, (width2, height2), created2, modified2 = get_file_info(filepath2)
+            if size2 is not None:
+                try:
+                    print(f"Loading thumbnail for {filename2} at {filepath2}")
+                    img = Image.open(filepath2)
+                    img = img.resize((100, 100), Image.Resampling.LANCZOS)
+                    thumbnails[filename2] = ImageTk.PhotoImage(img)
+                    thumbnail_label = tk.Label(file2_frame, image=thumbnails[filename2])
+                    thumbnail_label.pack()
+                    print(f"Thumbnail for {filename2} loaded and packed")
+                except Exception as e:
+                    print(f"Error loading thumbnail for {filename2}: {e}")
+                    tk.Label(file2_frame, text="[Thumbnail Error]").pack()
+                tk.Label(file2_frame, text=f"{filename2}\nSize: {size2:.2f} KB\nRes: {width2}x{height2}\nCreated: {created2}\nModified: {modified2}").pack()
+            else:
+                tk.Label(file2_frame, text=f"{filename2}\n[Error retrieving info]").pack()
 
 def delete_selected():
     global file_vars
