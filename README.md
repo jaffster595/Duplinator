@@ -1,7 +1,6 @@
-```markdown
-# Duplicate Image Finder
+## Duplicate Image Finder
 
-A small tool (using Python and Tkinter) which finds any duplicate images within a particular folder. It returns any duplicate image pairs and allows you to delete one of them from within the application.
+A small tool which finds any duplicate images within a particular folder. It returns any duplicate image pairs and allows you to delete one of them from within the application.
 
 ## Features
 
@@ -25,7 +24,7 @@ A small tool (using Python and Tkinter) which finds any duplicate images within 
 
 ## Usage
 
-1. **Run the Script**: Open a terminal or command prompt, navigate to the directory containing the script, and run:
+1. **Download and Run the Script**: Open a terminal or command prompt, navigate to the directory containing the script, and run:
 
    ```bash
    python duplicate_image_finder.py
@@ -33,7 +32,7 @@ A small tool (using Python and Tkinter) which finds any duplicate images within 
 
 2. **Select Folder**: Click the "Browse" button to choose the folder you want to scan for duplicates.
 
-3. **Adjust Parameters**: Optionally, modify the hash size and threshold values using the spinbox controls. The defaults are hash size = 8 and threshold = 5.
+3. **Adjust Parameters**: Optionally, modify the hash size and threshold values using the spinbox controls. The defaults are hash size = 8 and threshold = 5. Higher values mean less accuracy but can also then detect partial duplicates or matches.
 
 4. **Find Duplicates**: Click the "Find Duplicates" button to start scanning. A progress window will appear during the process.
 
