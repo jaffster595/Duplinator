@@ -1,6 +1,7 @@
 ## Duplicate Image Finder
 
-A small tool which finds any duplicate images within a particular folder. It returns any duplicate image pairs and allows you to delete one of them from within the application.
+A small tool which finds any duplicate images within a particular folder by comparing the hashes of all the images within a folder. It returns duplicate image pairs and allows you to delete one of them from within the application.
+File formats that this will search through are .png, .jpg, .jpeg, .gif, .bmp, .tiff and .webp.
 
 ## Features
 
