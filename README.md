@@ -1,4 +1,4 @@
-## Duplicate Image Finder
+## Duplinator
 
 A small tool which finds any duplicate images within a particular folder by comparing the hashes of all the images within a folder. It returns duplicate image pairs and allows you to delete one of them from within the application.
 File formats that this will search through are .png, .jpg, .jpeg, .gif, .bmp, .tiff and .webp.
@@ -33,9 +33,9 @@ File formats that this will search through are .png, .jpg, .jpeg, .gif, .bmp, .t
 
 2. **Select Folder**: Click the "Browse" button to choose the folder you want to scan for duplicates.
 
-3. **Adjust Parameters**: Optionally, modify the hash size and threshold values using the spinbox controls. The defaults are hash size = 8 and threshold = 5. Higher values mean less accuracy but can also then detect partial duplicates or matches.
+3. **Adjust Parameters**: Optionally, modify the hash size and threshold values using the slider controls
 
-4. **Find Duplicates**: Click the "Find Duplicates" button to start scanning. A progress window will appear during the process.
+4. **Find Duplicates**: Click the "Find Duplicates" button to start scanning, a progress window will appear during the process. Depending upon the number of images in the folder and the speed of your device, this can take a few moments to process.
 
 5. **Review Duplicates**: Once the scan completes, duplicate image pairs will be displayed with thumbnails and file information (size, resolution, creation date, and modification date). Use the checkboxes to select the images you want to delete.
 
@@ -46,7 +46,8 @@ File formats that this will search through are .png, .jpg, .jpeg, .gif, .bmp, .t
 ## Parameters
 
 - **Hash Size**: Controls the size of the perceptual hash. A larger value increases accuracy but also increases computation time. Default is 8.
-- **Threshold**: The maximum hash difference for two images to be considered duplicates. A lower value means stricter matching. Default is 5.
+- **Threshold**: The maximum hash difference for two images to be considered duplicates. A lower value means stricter matching. Default is 5. This can be useful if you want to identify images which are similar but not identical.
+- **Include Sub-Folders**: This option will include any subfolders that exist within your search directory. This only goes down one-level, so if you have sub-folders within sub-folders, these won't be included.
 
 Experiment with these values based on your needs. For example, a lower threshold detects only very similar images, while a higher threshold may include more variations.
 
