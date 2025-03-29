@@ -7,11 +7,21 @@ import threading
 import queue
 from datetime import datetime
 
-# Global dictionary to store checkbox variables and thumbnails
-file_vars = {}
-thumbnails = {}  # Global to persist thumbnails
+# Global variables
+pairs = []  # List to store duplicate pairs and user choices
+thumbnails = {}  # Dictionary to persist thumbnails
 
+# Function to update the state of delete buttons
+def update_button_states():
+    """Enable or disable delete buttons based on whether any image is selected."""
+    any_selected = any(pair["choice"].get() in ["left", "right"] for pair in pairs)
+    state = tk.NORMAL if any_selected else tk.DISABLED
+    delete_button.config(state=state)
+    delete_rescan_button.config(state=state)
+
+# Function to find duplicate images
 def find_duplicate_images(folder_path, hash_size=8, threshold=5):
+    """Find duplicate images in the specified folder using perceptual hashing."""
     image_hashes = {}
     duplicates = []
 
@@ -39,7 +49,7 @@ def find_duplicate_images(folder_path, hash_size=8, threshold=5):
 
 # GUI Setup
 root = tk.Tk()
-root.title("Duplicate Image Finder")
+root.title("Duplinator")
 
 # Folder Selection
 folder_frame = tk.Frame(root)
@@ -50,6 +60,7 @@ folder_entry = tk.Entry(folder_frame, textvariable=folder_path_var, width=50)
 folder_entry.pack(side=tk.LEFT, padx=5)
 
 def select_folder():
+    """Open a dialog to select a folder and update the entry field."""
     path = filedialog.askdirectory()
     if path:
         folder_path_var.set(path)
@@ -66,8 +77,8 @@ tk.Label(params_frame, text="Threshold:").pack(side=tk.LEFT)
 threshold_var = tk.IntVar(value=5)
 tk.Spinbox(params_frame, from_=0, to=100, textvariable=threshold_var).pack(side=tk.LEFT, padx=5)
 
-# Find Duplicates Button
-find_button = tk.Button(root, text="Find Duplicates", command=lambda: run_duplicate_finder())
+# Find Duplicates Button (made more prominent)
+find_button = tk.Button(root, text="Start Scan", command=lambda: run_duplicate_finder(), font=("Arial", 14), width=20)
 find_button.pack(pady=10)
 
 # Results Display (Scrollable Frame)
@@ -85,6 +96,7 @@ inner_frame = tk.Frame(canvas)
 canvas.create_window((0, 0), window=inner_frame, anchor="nw")
 
 def on_frame_configure(event):
+    """Update the scroll region when the inner frame size changes."""
     canvas.configure(scrollregion=canvas.bbox("all"))
 
 inner_frame.bind("<Configure>", on_frame_configure)
@@ -99,6 +111,10 @@ delete_button.pack(side=tk.LEFT, padx=5)
 delete_rescan_button = tk.Button(button_frame, text="Delete and Rescan", command=lambda: delete_and_rescan())
 delete_rescan_button.pack(side=tk.LEFT, padx=5)
 
+# Initially disable the buttons
+delete_button.config(state=tk.DISABLED)
+delete_rescan_button.config(state=tk.DISABLED)
+
 # Status Bar
 status_var = tk.StringVar(value="Ready")
 status_label = tk.Label(root, textvariable=status_var)
@@ -109,6 +125,7 @@ progress_window = None
 progress_bar = None
 
 def show_progress_window():
+    """Display a progress window during scanning."""
     global progress_window, progress_bar
     progress_window = tk.Toplevel(root)
     progress_window.title("Processing")
@@ -133,6 +150,7 @@ def show_progress_window():
     progress_window.geometry(f"{progress_width}x{progress_height}+{x}+{y}")
 
 def hide_progress_window():
+    """Close the progress window when scanning is complete."""
     global progress_window
     if progress_window:
         progress_bar.stop()
@@ -141,6 +159,7 @@ def hide_progress_window():
 
 # Functions for GUI Logic
 def run_duplicate_finder():
+    """Start the duplicate image finder process in a separate thread."""
     folder_path = folder_path_var.get()
     if not folder_path or not os.path.isdir(folder_path):
         messagebox.showerror("Error", "Please select a valid folder.")
@@ -169,6 +188,7 @@ def run_duplicate_finder():
     check_queue(result_queue)
 
 def check_queue(result_queue):
+    """Check the result queue for the outcome of the duplicate finder."""
     try:
         result = result_queue.get_nowait()
         if isinstance(result, Exception):
@@ -182,6 +202,7 @@ def check_queue(result_queue):
         root.after(100, check_queue, result_queue)
 
 def get_file_info(filepath):
+    """Retrieve file size, resolution, and timestamps."""
     try:
         stat = os.stat(filepath)
         size = stat.st_size / 1024  # Size in KB
@@ -195,78 +216,80 @@ def get_file_info(filepath):
         return None, (0, 0), "Unknown", "Unknown"
 
 def display_results(duplicate_pairs):
-    global file_vars, thumbnails
+    """Display the duplicate pairs with radio buttons for selection."""
+    global pairs
     for widget in inner_frame.winfo_children():
         widget.destroy()
-    thumbnails.clear()  # Clear previous thumbnails
+    pairs = []
     if not duplicate_pairs:
         tk.Label(inner_frame, text="No duplicate images found.").pack()
-        file_vars = {}
     else:
-        all_files = set()
-        for pair in duplicate_pairs:
-            all_files.update(pair)
-        file_vars = {file: tk.BooleanVar() for file in all_files}
         folder_path = folder_path_var.get()
-
         for i, (filename1, filename2) in enumerate(duplicate_pairs):
             if i > 0:
                 ttk.Separator(inner_frame, orient="horizontal").pack(fill=tk.X, pady=5)
-
             subframe = tk.Frame(inner_frame)
             subframe.pack(fill=tk.X, pady=5)
 
-            # File 1
-            file1_frame = tk.Frame(subframe)
-            file1_frame.pack(side=tk.LEFT, padx=10)
-            var1 = file_vars[filename1]
-            tk.Checkbutton(file1_frame, variable=var1).pack(side=tk.LEFT)
-
+            # Left image frame
+            left_frame = tk.Frame(subframe)
+            left_frame.pack(side=tk.LEFT, padx=10)
             filepath1 = os.path.join(folder_path, filename1)
             size1, (width1, height1), created1, modified1 = get_file_info(filepath1)
             if size1 is not None:
                 try:
-                    print(f"Loading thumbnail for {filename1} at {filepath1}")
                     img = Image.open(filepath1)
                     img = img.resize((100, 100), Image.Resampling.LANCZOS)
                     thumbnails[filename1] = ImageTk.PhotoImage(img)
-                    thumbnail_label = tk.Label(file1_frame, image=thumbnails[filename1])
-                    thumbnail_label.pack()
-                    print(f"Thumbnail for {filename1} loaded and packed")
+                    tk.Label(left_frame, image=thumbnails[filename1]).pack()
                 except Exception as e:
                     print(f"Error loading thumbnail for {filename1}: {e}")
-                    tk.Label(file1_frame, text="[Thumbnail Error]").pack()
-                tk.Label(file1_frame, text=f"{filename1}\nSize: {size1:.2f} KB\nRes: {width1}x{height1}\nCreated: {created1}\nModified: {modified1}").pack()
+                    tk.Label(left_frame, text="[Thumbnail Error]").pack()
+                tk.Label(left_frame, text=f"{filename1}\nSize: {size1:.2f} KB\nRes: {width1}x{height1}\nCreated: {created1}\nModified: {modified1}").pack()
             else:
-                tk.Label(file1_frame, text=f"{filename1}\n[Error retrieving info]").pack()
+                tk.Label(left_frame, text=f"{filename1}\n[Error retrieving info]").pack()
 
-            # File 2
-            file2_frame = tk.Frame(subframe)
-            file2_frame.pack(side=tk.LEFT, padx=10)
-            var2 = file_vars[filename2]
-            tk.Checkbutton(file2_frame, variable=var2).pack(side=tk.LEFT)
+            # Delete choice frame with radio buttons
+            choice_frame = tk.Frame(subframe)
+            choice_frame.pack(side=tk.LEFT, padx=10)
+            choice_var = tk.StringVar(value="none")
+            tk.Label(choice_frame, text="Delete which image?").pack()
+            tk.Radiobutton(choice_frame, text="Left", variable=choice_var, value="left").pack(anchor=tk.W)
+            tk.Radiobutton(choice_frame, text="Right", variable=choice_var, value="right").pack(anchor=tk.W)
+            tk.Radiobutton(choice_frame, text="Neither", variable=choice_var, value="none").pack(anchor=tk.W)
 
+            # Right image frame
+            right_frame = tk.Frame(subframe)
+            right_frame.pack(side=tk.LEFT, padx=10)
             filepath2 = os.path.join(folder_path, filename2)
             size2, (width2, height2), created2, modified2 = get_file_info(filepath2)
             if size2 is not None:
                 try:
-                    print(f"Loading thumbnail for {filename2} at {filepath2}")
                     img = Image.open(filepath2)
                     img = img.resize((100, 100), Image.Resampling.LANCZOS)
                     thumbnails[filename2] = ImageTk.PhotoImage(img)
-                    thumbnail_label = tk.Label(file2_frame, image=thumbnails[filename2])
-                    thumbnail_label.pack()
-                    print(f"Thumbnail for {filename2} loaded and packed")
+                    tk.Label(right_frame, image=thumbnails[filename2]).pack()
                 except Exception as e:
                     print(f"Error loading thumbnail for {filename2}: {e}")
-                    tk.Label(file2_frame, text="[Thumbnail Error]").pack()
-                tk.Label(file2_frame, text=f"{filename2}\nSize: {size2:.2f} KB\nRes: {width2}x{height2}\nCreated: {created2}\nModified: {modified2}").pack()
+                    tk.Label(right_frame, text="[Thumbnail Error]").pack()
+                tk.Label(right_frame, text=f"{filename2}\nSize: {size2:.2f} KB\nRes: {width2}x{height2}\nCreated: {created2}\nModified: {modified2}").pack()
             else:
-                tk.Label(file2_frame, text=f"{filename2}\n[Error retrieving info]").pack()
+                tk.Label(right_frame, text=f"{filename2}\n[Error retrieving info]").pack()
+
+            # Store pair info and set trace for button updates
+            pairs.append({"file1": filename1, "file2": filename2, "choice": choice_var})
+            choice_var.trace("w", lambda *args: update_button_states())
+    update_button_states()
 
 def delete_selected():
-    global file_vars
-    to_delete = [file for file, var in file_vars.items() if var.get()]
+    """Delete the selected images based on user choices."""
+    to_delete = set()
+    for pair in pairs:
+        choice = pair["choice"].get()
+        if choice == "left":
+            to_delete.add(pair["file1"])
+        elif choice == "right":
+            to_delete.add(pair["file2"])
     if not to_delete:
         messagebox.showinfo("Info", "No images selected for deletion.")
         return
@@ -282,6 +305,7 @@ def delete_selected():
         messagebox.showinfo("Info", "Selected images deleted.")
 
 def delete_and_rescan():
+    """Delete selected images and rescan the folder."""
     delete_selected()
     run_duplicate_finder()
 
