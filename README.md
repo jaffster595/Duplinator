@@ -1,11 +1,19 @@
 ## Duplinator
 
-A small tool which finds any duplicate images within a particular folder by comparing the hashes of all the images within a folder. It returns duplicate image pairs and allows you to delete one of them from within the application.
-File formats that this will search through are .png, .jpg, .jpeg, .gif, .bmp, .tiff and .webp.
+A small tool which finds any duplicate images within a particular folder by comparing the hashes of every image file within a folder. It returns duplicate image pairs and allows you to delete one of them from within the application.
+Supported image formats are: 
+
+.png
+.jpg
+.jpeg
+.gif
+.bmp
+.tiff
+.webp
 
 ## Features
 
-- Evolving at the moment. TBC
+TBC
 
 ## Requirements
 
@@ -14,7 +22,7 @@ File formats that this will search through are .png, .jpg, .jpeg, .gif, .bmp, .t
 2. **Dependencies**: Install the required Python packages using pip:
 
    ```bash
-   pip install pillow imagehash
+   pip install pillow imagehash PyQt6
    ```
 
 3. **Tkinter**: Tkinter is usually included with Python. If it’s not installed, you may need to install it separately. For example, on Ubuntu:

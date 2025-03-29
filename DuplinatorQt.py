@@ -7,27 +7,15 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtGui import QFont, QImage, QPixmap
 from datetime import datetime
 
-# Function to get file information
-def get_file_info(filepath):
-    try:
-        stat = os.stat(filepath)
-        size_kb = stat.st_size / 1024
-        with Image.open(filepath) as img:
-            resolution = img.size
-        created = datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S')
-        modified = datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
-        return size_kb, resolution, created, modified
-    except Exception:
-        return None, (0, 0), "Unknown", "Unknown"
-
 # Function to find duplicate images
-def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=False):
+def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=False, included_extensions=None):
+    included_extensions = tuple(included_extensions)  # Convert to tuple for endswith
     image_hashes = {}
     duplicates = []
     if include_subfolders:
         for root, _, files in os.walk(folder_path):
             for file in files:
-                if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp')):
+                if file.lower().endswith(included_extensions):
                     filepath = os.path.join(root, file)
                     try:
                         with Image.open(filepath) as img:
@@ -40,7 +28,7 @@ def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=
                         print(f"Error processing {filepath}: {e}")
     else:
         for file in os.listdir(folder_path):
-            if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp')):
+            if file.lower().endswith(included_extensions):
                 filepath = os.path.join(folder_path, file)
                 try:
                     with Image.open(filepath) as img:
@@ -57,16 +45,17 @@ def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=
 class ScanThread(QThread):
     finished = pyqtSignal(object)
 
-    def __init__(self, folder_path, hash_size, threshold, include_subfolders):
+    def __init__(self, folder_path, hash_size, threshold, include_subfolders, included_extensions):
         super().__init__()
         self.folder_path = folder_path
         self.hash_size = hash_size
         self.threshold = threshold
         self.include_subfolders = include_subfolders
+        self.included_extensions = included_extensions
 
     def run(self):
         try:
-            duplicates = find_duplicate_images(self.folder_path, self.hash_size, self.threshold, self.include_subfolders)
+            duplicates = find_duplicate_images(self.folder_path, self.hash_size, self.threshold, self.include_subfolders, self.included_extensions)
             self.finished.emit(duplicates)
         except Exception as e:
             self.finished.emit(e)
@@ -79,6 +68,7 @@ class MainWindow(QMainWindow):
         self.thumbnails = {}  # Store thumbnails to reuse
         self.pairs = []  # Store duplicate pairs and their button groups
         self.setup_ui()
+        self.resize(800, 600)  # Set initial window size
 
     def setup_ui(self):
         # Central widget and main layout
@@ -97,6 +87,20 @@ class MainWindow(QMainWindow):
         folder_layout.addWidget(self.folder_entry)
         folder_layout.addWidget(browse_button)
         main_layout.addWidget(folder_frame)
+
+        # File types frame
+        file_types_frame = QFrame()
+        file_types_layout = QHBoxLayout(file_types_frame)
+        file_types_label = QLabel("File Types:")
+        file_types_layout.addWidget(file_types_label)
+        self.file_type_checkboxes = {}
+        for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp']:
+            checkbox = QCheckBox(ext)
+            checkbox.setChecked(True)
+            file_types_layout.addWidget(checkbox)
+            self.file_type_checkboxes[ext] = checkbox
+        file_types_layout.addStretch()
+        main_layout.addWidget(file_types_frame)
 
         # Parameters frame with sliders and checkbox
         params_frame = QFrame()
@@ -179,6 +183,12 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error", "Please select a valid folder.")
             return
 
+        # Get included file extensions
+        included_extensions = [ext for ext in self.file_type_checkboxes if self.file_type_checkboxes[ext].isChecked()]
+        if not included_extensions:
+            QMessageBox.critical(self, "Error", "No file types selected.")
+            return
+
         # Clear previous data
         self.thumbnails.clear()
         for widget in self.inner_widget.findChildren(QtWidgets.QWidget):
@@ -197,7 +207,7 @@ class MainWindow(QMainWindow):
         hash_size = self.hash_size_slider.value()
         threshold = self.threshold_slider.value()
         include_subfolders = self.include_subfolders_checkbox.isChecked()
-        self.scan_thread = ScanThread(folder_path, hash_size, threshold, include_subfolders)
+        self.scan_thread = ScanThread(folder_path, hash_size, threshold, include_subfolders, included_extensions)
         self.scan_thread.finished.connect(self.on_scan_finished)
         self.scan_thread.start()
 
@@ -225,32 +235,48 @@ class MainWindow(QMainWindow):
 
                 pair_layout = QHBoxLayout()
 
-                # Left image
+                # Process filepath1
+                try:
+                    stat1 = os.stat(filepath1)
+                    size_kb1 = stat1.st_size / 1024
+                    created1 = datetime.fromtimestamp(stat1.st_ctime).strftime('%Y-%m-%d %H:%M:%S')
+                    modified1 = datetime.fromtimestamp(stat1.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                    with Image.open(filepath1) as img1:
+                        width1, height1 = img1.size
+                        if filepath1 not in self.thumbnails:
+                            max_size = 150
+                            if width1 > height1:
+                                new_width1 = max_size
+                                new_height1 = int((height1 / width1) * max_size)
+                            else:
+                                new_height1 = max_size
+                                new_width1 = int((width1 / height1) * max_size)
+                            thumbnail1 = img1.resize((new_width1, new_height1), Image.Resampling.LANCZOS).convert("RGB")
+                            qt_img1 = QImage(thumbnail1.tobytes(), thumbnail1.width, thumbnail1.height, thumbnail1.width * 3, QImage.Format.Format_RGB888)
+                            self.thumbnails[filepath1] = QPixmap.fromImage(qt_img1)
+                except Exception as e:
+                    print(f"Error processing {filepath1}: {e}")
+                    size_kb1, width1, height1, created1, modified1 = None, 0, 0, "Unknown", "Unknown"
+                    self.thumbnails[filepath1] = None
+
+                # Left image frame
                 left_frame = QFrame()
                 left_layout = QVBoxLayout(left_frame)
-                size1, (width1, height1), created1, modified1 = get_file_info(filepath1)
                 rel_path1 = os.path.relpath(filepath1, folder_path)
-                if size1 is not None:
-                    if filepath1 not in self.thumbnails:
-                        try:
-                            pil_img = Image.open(filepath1).resize((100, 100), Image.Resampling.LANCZOS).convert("RGB")
-                            qt_img = QImage(pil_img.tobytes(), pil_img.width, pil_img.height, pil_img.width * 3, QImage.Format.Format_RGB888)
-                            self.thumbnails[filepath1] = QPixmap.fromImage(qt_img)
-                        except Exception as e:
-                            print(f"Error loading thumbnail for {filepath1}: {e}")
-                            self.thumbnails[filepath1] = None
-                    thumbnail_label = QLabel()
+                if size_kb1 is not None:
+                    thumbnail_label1 = QLabel()
                     if self.thumbnails[filepath1]:
-                        thumbnail_label.setPixmap(self.thumbnails[filepath1])
+                        thumbnail_label1.setPixmap(self.thumbnails[filepath1])
                     else:
-                        thumbnail_label.setText("[Thumbnail Error]")
-                    left_layout.addWidget(thumbnail_label)
-                    info_text1 = f"{rel_path1}\nSize: {size1:.2f} KB\nRes: {width1}x{height1}\nCreated: {created1}\nModified: {modified1}"
+                        thumbnail_label1.setText("[Thumbnail Error]")
+                    left_layout.addWidget(thumbnail_label1)
+                    info_text1 = f"{rel_path1}\nSize: {size_kb1:.2f} KB\nRes: {width1}x{height1}\nCreated: {created1}\nModified: {modified1}"
                     info_label1 = QLabel(info_text1)
+                    info_label1.setToolTip(filepath1)
                     left_layout.addWidget(info_label1)
                 else:
-                    error_label = QLabel(f"{rel_path1}\n[Error retrieving info]")
-                    left_layout.addWidget(error_label)
+                    error_label1 = QLabel(f"{rel_path1}\n[Error retrieving info]")
+                    left_layout.addWidget(error_label1)
                 pair_layout.addWidget(left_frame)
 
                 # Choice frame
@@ -271,32 +297,48 @@ class MainWindow(QMainWindow):
                 choice_layout.addWidget(neither_radio)
                 pair_layout.addWidget(choice_frame)
 
-                # Right image
+                # Process filepath2
+                try:
+                    stat2 = os.stat(filepath2)
+                    size_kb2 = stat2.st_size / 1024
+                    created2 = datetime.fromtimestamp(stat2.st_ctime).strftime('%Y-%m-%d %H:%M:%S')
+                    modified2 = datetime.fromtimestamp(stat2.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                    with Image.open(filepath2) as img2:
+                        width2, height2 = img2.size
+                        if filepath2 not in self.thumbnails:
+                            max_size = 150
+                            if width2 > height2:
+                                new_width2 = max_size
+                                new_height2 = int((height2 / width2) * max_size)
+                            else:
+                                new_height2 = max_size
+                                new_width2 = int((width2 / height2) * max_size)
+                            thumbnail2 = img2.resize((new_width2, new_height2), Image.Resampling.LANCZOS).convert("RGB")
+                            qt_img2 = QImage(thumbnail2.tobytes(), thumbnail2.width, thumbnail2.height, thumbnail2.width * 3, QImage.Format.Format_RGB888)
+                            self.thumbnails[filepath2] = QPixmap.fromImage(qt_img2)
+                except Exception as e:
+                    print(f"Error processing {filepath2}: {e}")
+                    size_kb2, width2, height2, created2, modified2 = None, 0, 0, "Unknown", "Unknown"
+                    self.thumbnails[filepath2] = None
+
+                # Right image frame
                 right_frame = QFrame()
                 right_layout = QVBoxLayout(right_frame)
-                size2, (width2, height2), created2, modified2 = get_file_info(filepath2)
                 rel_path2 = os.path.relpath(filepath2, folder_path)
-                if size2 is not None:
-                    if filepath2 not in self.thumbnails:
-                        try:
-                            pil_img = Image.open(filepath2).resize((100, 100), Image.Resampling.LANCZOS).convert("RGB")
-                            qt_img = QImage(pil_img.tobytes(), pil_img.width, pil_img.height, pil_img.width * 3, QImage.Format.Format_RGB888)
-                            self.thumbnails[filepath2] = QPixmap.fromImage(qt_img)
-                        except Exception as e:
-                            print(f"Error loading thumbnail for {filepath2}: {e}")
-                            self.thumbnails[filepath2] = None
-                    thumbnail_label = QLabel()
+                if size_kb2 is not None:
+                    thumbnail_label2 = QLabel()
                     if self.thumbnails[filepath2]:
-                        thumbnail_label.setPixmap(self.thumbnails[filepath2])
+                        thumbnail_label2.setPixmap(self.thumbnails[filepath2])
                     else:
-                        thumbnail_label.setText("[Thumbnail Error]")
-                    right_layout.addWidget(thumbnail_label)
-                    info_text2 = f"{rel_path2}\nSize: {size2:.2f} KB\nRes: {width2}x{height2}\nCreated: {created2}\nModified: {modified2}"
+                        thumbnail_label2.setText("[Thumbnail Error]")
+                    right_layout.addWidget(thumbnail_label2)
+                    info_text2 = f"{rel_path2}\nSize: {size_kb2:.2f} KB\nRes: {width2}x{height2}\nCreated: {created2}\nModified: {modified2}"
                     info_label2 = QLabel(info_text2)
+                    info_label2.setToolTip(filepath2)
                     right_layout.addWidget(info_label2)
                 else:
-                    error_label = QLabel(f"{rel_path2}\n[Error retrieving info]")
-                    right_layout.addWidget(error_label)
+                    error_label2 = QLabel(f"{rel_path2}\n[Error retrieving info]")
+                    right_layout.addWidget(error_label2)
                 pair_layout.addWidget(right_frame)
 
                 self.inner_layout.addLayout(pair_layout)
