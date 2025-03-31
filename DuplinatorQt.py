@@ -1,4 +1,5 @@
 import os
+import sys
 import imagehash
 from PIL import Image
 from PyQt6 import QtWidgets, QtCore, QtGui
@@ -6,6 +7,15 @@ from PyQt6.QtWidgets import QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QLabe
 from PyQt6.QtCore import QThread, pyqtSignal, QSize
 from PyQt6.QtGui import QFont, QImage, QPixmap, QIcon
 from datetime import datetime
+
+# Helper function to get the correct path to resources
+def resource_path(relative_path):
+    """Get absolute path to resource, works for development and PyInstaller."""
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.dirname(__file__)
+    return os.path.join(base_path, relative_path)
 
 # Function to find duplicate images (unchanged)
 def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=False, included_extensions=None):
@@ -141,28 +151,31 @@ class MainWindow(QMainWindow):
 
         # New bottom layout with icon buttons
         bottom_layout = QHBoxLayout()
+        
+        bottom_layout.addStretch(1)
 
         # Scan button with icon
         self.start_button = QPushButton()
-        scan_icon = QIcon("img/SCAN128.png")
+        scan_icon = QIcon(resource_path("img/SCAN128.png"))
         self.start_button.setIcon(scan_icon)
-        self.start_button.setIconSize(QSize(64, 64))
+        self.start_button.setIconSize(QSize(90, 90))
         self.start_button.setToolTip("Start Scan")
         self.start_button.clicked.connect(self.run_scan)
         bottom_layout.addWidget(self.start_button)
 
-        # Add stretch to push delete button to the right
-        bottom_layout.addStretch()
+        bottom_layout.addStretch(1)
 
         # Delete button with icon
         self.delete_button = QPushButton()
-        delete_icon = QIcon("img/DELETE128.png")
+        delete_icon = QIcon(resource_path("img/DELETE128.png"))
         self.delete_button.setIcon(delete_icon)
-        self.delete_button.setIconSize(QSize(64, 64))
+        self.delete_button.setIconSize(QSize(90, 90))
         self.delete_button.setToolTip("Delete Selected")
         self.delete_button.clicked.connect(self.delete_selected)
         self.delete_button.setEnabled(False)
         bottom_layout.addWidget(self.delete_button)
+        
+        bottom_layout.addStretch(1)
 
         main_layout.addLayout(bottom_layout)
 
@@ -171,7 +184,7 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Ready")
 
-    # Methods below remain unchanged except for update_button_states and removal of delete_and_rescan
+    # Methods below remain unchanged
     def select_folder(self):
         folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Folder")
         if folder:
@@ -190,7 +203,7 @@ class MainWindow(QMainWindow):
         for widget in self.inner_widget.findChildren(QtWidgets.QWidget):
             widget.deleteLater()
         self.pairs = []
-        self.start_button.setEnabled(False)
+        self.start_button.setEnabled(True)
         self.status_bar.showMessage("Scanning...")
         self.progress_dialog = QProgressDialog("Scanning for duplicates...", None, 0, 0, self)
         self.progress_dialog.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
@@ -360,3 +373,6 @@ if __name__ == "__main__":
     window = MainWindow()
     window.show()
     app.exec()
+    
+    
+ 
