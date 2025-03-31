@@ -22,21 +22,15 @@ TBC
 2. **Dependencies**: Install the required Python packages using pip:
 
    ```bash
-   pip install pillow imagehash PyQt6
+   pip install pillow imagehash PyQt6 
    ```
-
-3. **Tkinter**: Tkinter is usually included with Python. If it’s not installed, you may need to install it separately. For example, on Ubuntu:
-
-   ```bash
-   sudo apt-get install python3-tk
-   ```
-
+   
 ## Usage
 
 1. **Download and Run the Script**: Open a terminal or command prompt, navigate to the directory containing the script, and run:
 
    ```bash
-   python duplicate_image_finder.py
+   python duplinatorqt.py
    ```
 
 2. **Select Folder**: Click the "Browse" button to choose the folder you want to scan for duplicates.
