@@ -3,13 +3,13 @@ import imagehash
 from PIL import Image
 from PyQt6 import QtWidgets, QtCore, QtGui
 from PyQt6.QtWidgets import QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QCheckBox, QScrollArea, QProgressDialog, QMessageBox
-from PyQt6.QtCore import QThread, pyqtSignal, QSize
-from PyQt6.QtGui import QFont, QImage, QPixmap, QIcon
+from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtGui import QFont, QImage, QPixmap
 from datetime import datetime
 
-# Function to find duplicate images (unchanged)
+# Function to find duplicate images
 def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=False, included_extensions=None):
-    included_extensions = tuple(included_extensions)
+    included_extensions = tuple(included_extensions)  # Convert to tuple for endswith
     image_hashes = {}
     duplicates = []
     if include_subfolders:
@@ -41,7 +41,7 @@ def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=
                     print(f"Error processing {filepath}: {e}")
     return duplicates
 
-# ScanThread class (unchanged)
+# Thread class for scanning
 class ScanThread(QThread):
     finished = pyqtSignal(object)
 
@@ -65,17 +65,18 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Duplinator")
-        self.thumbnails = {}
-        self.pairs = []
+        self.thumbnails = {}  # Store thumbnails to reuse
+        self.pairs = []  # Store duplicate pairs and their button groups
         self.setup_ui()
-        self.resize(800, 600)
+        self.resize(800, 600)  # Set initial window size
 
     def setup_ui(self):
+        # Central widget and main layout
         central_widget = QtWidgets.QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
 
-        # Folder selection frame (unchanged)
+        # Folder selection frame
         folder_frame = QFrame()
         folder_layout = QHBoxLayout(folder_frame)
         folder_label = QLabel("Folder:")
@@ -87,7 +88,7 @@ class MainWindow(QMainWindow):
         folder_layout.addWidget(browse_button)
         main_layout.addWidget(folder_frame)
 
-        # File types frame (unchanged)
+        # File types frame
         file_types_frame = QFrame()
         file_types_layout = QHBoxLayout(file_types_frame)
         file_types_label = QLabel("File Types:")
@@ -101,9 +102,11 @@ class MainWindow(QMainWindow):
         file_types_layout.addStretch()
         main_layout.addWidget(file_types_frame)
 
-        # Parameters frame (unchanged)
+        # Parameters frame with sliders and checkbox
         params_frame = QFrame()
         params_layout = QVBoxLayout(params_frame)
+
+        # Hash Size slider
         hash_size_layout = QHBoxLayout()
         hash_size_label = QLabel("Hash Size:")
         self.hash_size_slider = QSlider(QtCore.Qt.Orientation.Horizontal)
@@ -114,6 +117,8 @@ class MainWindow(QMainWindow):
         hash_size_layout.addWidget(self.hash_size_slider)
         hash_size_layout.addWidget(self.hash_size_value_label)
         params_layout.addLayout(hash_size_layout)
+
+        # Threshold slider
         threshold_layout = QHBoxLayout()
         threshold_label = QLabel("Threshold:")
         self.threshold_slider = QSlider(QtCore.Qt.Orientation.Horizontal)
@@ -124,14 +129,24 @@ class MainWindow(QMainWindow):
         threshold_layout.addWidget(self.threshold_slider)
         threshold_layout.addWidget(self.threshold_value_label)
         params_layout.addLayout(threshold_layout)
+
+        # Include subfolders checkbox
         self.include_subfolders_checkbox = QCheckBox("Include subfolders")
         params_layout.addWidget(self.include_subfolders_checkbox)
+
         main_layout.addWidget(params_frame)
 
+        # Connect sliders to update value labels
         self.hash_size_slider.valueChanged.connect(lambda: self.hash_size_value_label.setText(str(self.hash_size_slider.value())))
         self.threshold_slider.valueChanged.connect(lambda: self.threshold_value_label.setText(str(self.threshold_slider.value())))
 
-        # Scroll area (unchanged)
+        # Start Scan button with larger font
+        self.start_button = QPushButton("Start Scan")
+        self.start_button.setFont(QFont("Arial", 14))
+        self.start_button.clicked.connect(self.run_scan)
+        main_layout.addWidget(self.start_button)
+
+        # Scroll area for results
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.inner_widget = QtWidgets.QWidget()
@@ -139,39 +154,24 @@ class MainWindow(QMainWindow):
         self.scroll_area.setWidget(self.inner_widget)
         main_layout.addWidget(self.scroll_area)
 
-        # New bottom layout with icon buttons
-        bottom_layout = QHBoxLayout()
-
-        # Scan button with icon
-        self.start_button = QPushButton()
-        scan_icon = QIcon("img/SCAN128.png")
-        self.start_button.setIcon(scan_icon)
-        self.start_button.setIconSize(QSize(64, 64))
-        self.start_button.setToolTip("Start Scan")
-        self.start_button.clicked.connect(self.run_scan)
-        bottom_layout.addWidget(self.start_button)
-
-        # Add stretch to push delete button to the right
-        bottom_layout.addStretch()
-
-        # Delete button with icon
-        self.delete_button = QPushButton()
-        delete_icon = QIcon("img/DELETE128.png")
-        self.delete_button.setIcon(delete_icon)
-        self.delete_button.setIconSize(QSize(64, 64))
-        self.delete_button.setToolTip("Delete Selected")
+        # Delete buttons frame
+        button_frame = QFrame()
+        button_layout = QHBoxLayout(button_frame)
+        self.delete_button = QPushButton("Delete")
         self.delete_button.clicked.connect(self.delete_selected)
         self.delete_button.setEnabled(False)
-        bottom_layout.addWidget(self.delete_button)
+        self.delete_rescan_button = QPushButton("Delete and Rescan")
+        self.delete_rescan_button.clicked.connect(self.delete_and_rescan)
+        self.delete_rescan_button.setEnabled(False)
+        button_layout.addWidget(self.delete_button)
+        button_layout.addWidget(self.delete_rescan_button)
+        main_layout.addWidget(button_frame)
 
-        main_layout.addLayout(bottom_layout)
-
-        # Status bar (unchanged)
+        # Status bar
         self.status_bar = QtWidgets.QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Ready")
 
-    # Methods below remain unchanged except for update_button_states and removal of delete_and_rescan
     def select_folder(self):
         folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Folder")
         if folder:
@@ -182,20 +182,28 @@ class MainWindow(QMainWindow):
         if not folder_path or not os.path.isdir(folder_path):
             QMessageBox.critical(self, "Error", "Please select a valid folder.")
             return
+
+        # Get included file extensions
         included_extensions = [ext for ext in self.file_type_checkboxes if self.file_type_checkboxes[ext].isChecked()]
         if not included_extensions:
             QMessageBox.critical(self, "Error", "No file types selected.")
             return
+
+        # Clear previous data
         self.thumbnails.clear()
         for widget in self.inner_widget.findChildren(QtWidgets.QWidget):
             widget.deleteLater()
         self.pairs = []
         self.start_button.setEnabled(False)
         self.status_bar.showMessage("Scanning...")
+
+        # Show progress dialog
         self.progress_dialog = QProgressDialog("Scanning for duplicates...", None, 0, 0, self)
         self.progress_dialog.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         self.progress_dialog.setMinimumDuration(0)
         self.progress_dialog.show()
+
+        # Start scanning thread
         hash_size = self.hash_size_slider.value()
         threshold = self.threshold_slider.value()
         include_subfolders = self.include_subfolders_checkbox.isChecked()
@@ -224,7 +232,10 @@ class MainWindow(QMainWindow):
                     separator = QFrame()
                     separator.setFrameShape(QFrame.Shape.HLine)
                     self.inner_layout.addWidget(separator)
+
                 pair_layout = QHBoxLayout()
+
+                # Process filepath1
                 try:
                     stat1 = os.stat(filepath1)
                     size_kb1 = stat1.st_size / 1024
@@ -247,6 +258,8 @@ class MainWindow(QMainWindow):
                     print(f"Error processing {filepath1}: {e}")
                     size_kb1, width1, height1, created1, modified1 = None, 0, 0, "Unknown", "Unknown"
                     self.thumbnails[filepath1] = None
+
+                # Left image frame
                 left_frame = QFrame()
                 left_layout = QVBoxLayout(left_frame)
                 rel_path1 = os.path.relpath(filepath1, folder_path)
@@ -265,6 +278,8 @@ class MainWindow(QMainWindow):
                     error_label1 = QLabel(f"{rel_path1}\n[Error retrieving info]")
                     left_layout.addWidget(error_label1)
                 pair_layout.addWidget(left_frame)
+
+                # Choice frame
                 choice_frame = QFrame()
                 choice_layout = QVBoxLayout(choice_frame)
                 choice_label = QLabel("Delete which image?")
@@ -281,6 +296,8 @@ class MainWindow(QMainWindow):
                 choice_layout.addWidget(right_radio)
                 choice_layout.addWidget(neither_radio)
                 pair_layout.addWidget(choice_frame)
+
+                # Process filepath2
                 try:
                     stat2 = os.stat(filepath2)
                     size_kb2 = stat2.st_size / 1024
@@ -303,6 +320,8 @@ class MainWindow(QMainWindow):
                     print(f"Error processing {filepath2}: {e}")
                     size_kb2, width2, height2, created2, modified2 = None, 0, 0, "Unknown", "Unknown"
                     self.thumbnails[filepath2] = None
+
+                # Right image frame
                 right_frame = QFrame()
                 right_layout = QVBoxLayout(right_frame)
                 rel_path2 = os.path.relpath(filepath2, folder_path)
@@ -321,14 +340,17 @@ class MainWindow(QMainWindow):
                     error_label2 = QLabel(f"{rel_path2}\n[Error retrieving info]")
                     right_layout.addWidget(error_label2)
                 pair_layout.addWidget(right_frame)
+
                 self.inner_layout.addLayout(pair_layout)
                 self.pairs.append({"file1": filepath1, "file2": filepath2, "button_group": button_group})
                 button_group.buttonClicked.connect(self.update_button_states)
+
         self.update_button_states()
 
     def update_button_states(self):
         any_selected = any(pair["button_group"].checkedId() in [0, 1] for pair in self.pairs)
         self.delete_button.setEnabled(any_selected)
+        self.delete_rescan_button.setEnabled(any_selected)
 
     def delete_selected(self):
         to_delete = set()
@@ -338,9 +360,11 @@ class MainWindow(QMainWindow):
                 to_delete.add(pair["file1"])
             elif checked_id == 1:
                 to_delete.add(pair["file2"])
+
         if not to_delete:
             QMessageBox.information(self, "Info", "No images selected for deletion.")
             return
+
         confirm = QMessageBox.question(
             self, "Confirm Deletion",
             f"Are you sure you want to delete {len(to_delete)} image(s)?",
@@ -354,9 +378,14 @@ class MainWindow(QMainWindow):
                     QMessageBox.critical(self, "Error", f"Failed to delete {file}: {e}")
             QMessageBox.information(self, "Info", "Selected images deleted.")
 
+    def delete_and_rescan(self):
+        self.delete_selected()
+        self.run_scan()
+
 # Run the application
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
     window = MainWindow()
     window.show()
     app.exec()
+ 
