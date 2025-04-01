@@ -1,6 +1,8 @@
 ## Duplinator
 
-A small tool which finds any duplicate images within a particular folder by comparing the hashes of every image file within a folder. It returns duplicate image pairs and allows you to delete one of them from within the application.
+A passion project that I'm creating whilst I learn Python. If any random or qwerky features appear then it's likely due to me being curious about how something works. The basic functionality will remain the same, though.
+
+It's a small tool which finds any duplicate images within a particular folder by comparing the hashes of every image file within that folder. It returns duplicate image pairs and allows you to delete one of them from within the application.
 
 ![image](https://github.com/user-attachments/assets/85e6c15f-9c2d-4d68-88d5-4fcf29706f2d)
 
