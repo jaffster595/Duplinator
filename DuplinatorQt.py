@@ -10,14 +10,13 @@ from datetime import datetime
 
 # Helper function to get the correct path to resources
 def resource_path(relative_path):
-    """Get absolute path to resource, works for development and PyInstaller."""
     if getattr(sys, 'frozen', False):
         base_path = sys._MEIPASS
     else:
         base_path = os.path.dirname(__file__)
     return os.path.join(base_path, relative_path)
 
-# Function to find duplicate images (unchanged)
+# Function to find duplicate images
 def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=False, included_extensions=None):
     included_extensions = tuple(included_extensions)
     image_hashes = {}
@@ -51,7 +50,7 @@ def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=
                     print(f"Error processing {filepath}: {e}")
     return duplicates
 
-# ScanThread class (unchanged)
+# ScanThread class
 class ScanThread(QThread):
     finished = pyqtSignal(object)
 
@@ -85,11 +84,12 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
 
-        # Folder selection frame (unchanged)
+        # Folder selection frame
         folder_frame = QFrame()
         folder_layout = QHBoxLayout(folder_frame)
         folder_label = QLabel("Folder:")
         self.folder_entry = QLineEdit()
+        self.folder_entry.setToolTip("Use the browse button or enter a complete directory path")
         browse_button = QPushButton("Browse")
         browse_button.clicked.connect(self.select_folder)
         folder_layout.addWidget(folder_label)
@@ -97,7 +97,7 @@ class MainWindow(QMainWindow):
         folder_layout.addWidget(browse_button)
         main_layout.addWidget(folder_frame)
 
-        # File types frame (unchanged)
+        # File types frame
         file_types_frame = QFrame()
         file_types_layout = QHBoxLayout(file_types_frame)
         file_types_label = QLabel("File Types:")
@@ -111,7 +111,7 @@ class MainWindow(QMainWindow):
         file_types_layout.addStretch()
         main_layout.addWidget(file_types_frame)
 
-        # Parameters frame (unchanged)
+        # Parameters frame
         params_frame = QFrame()
         params_layout = QVBoxLayout(params_frame)
         hash_size_layout = QHBoxLayout()
@@ -119,6 +119,7 @@ class MainWindow(QMainWindow):
         self.hash_size_slider = QSlider(QtCore.Qt.Orientation.Horizontal)
         self.hash_size_slider.setRange(4, 32)
         self.hash_size_slider.setValue(8)
+        self.hash_size_slider.setToolTip("Controls the size of the generated hash. A larger value increases accuracy but also increases computation time. Default is 8.")
         self.hash_size_value_label = QLabel("8")
         hash_size_layout.addWidget(hash_size_label)
         hash_size_layout.addWidget(self.hash_size_slider)
@@ -129,19 +130,21 @@ class MainWindow(QMainWindow):
         self.threshold_slider = QSlider(QtCore.Qt.Orientation.Horizontal)
         self.threshold_slider.setRange(0, 20)
         self.threshold_slider.setValue(5)
+        self.threshold_slider.setToolTip("The threshold for two images to be considered duplicates. A lower value means stricter matching and less results. Default is 5.")
         self.threshold_value_label = QLabel("5")
         threshold_layout.addWidget(threshold_label)
         threshold_layout.addWidget(self.threshold_slider)
         threshold_layout.addWidget(self.threshold_value_label)
         params_layout.addLayout(threshold_layout)
         self.include_subfolders_checkbox = QCheckBox("Include subfolders")
+        self.include_subfolders_checkbox.setToolTip("Specifies if any subfolders within the specified folder should be included in the search.")
         params_layout.addWidget(self.include_subfolders_checkbox)
         main_layout.addWidget(params_frame)
 
         self.hash_size_slider.valueChanged.connect(lambda: self.hash_size_value_label.setText(str(self.hash_size_slider.value())))
         self.threshold_slider.valueChanged.connect(lambda: self.threshold_value_label.setText(str(self.threshold_slider.value())))
 
-        # Scroll area (unchanged)
+        # Scroll area
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.inner_widget = QtWidgets.QWidget()
@@ -159,7 +162,7 @@ class MainWindow(QMainWindow):
         scan_icon = QIcon(resource_path("img/SCAN128.png"))
         self.start_button.setIcon(scan_icon)
         self.start_button.setIconSize(QSize(90, 90))
-        self.start_button.setToolTip("Start Scan")
+        self.start_button.setToolTip("Start scanning the specified folder for duplicate images")
         self.start_button.clicked.connect(self.run_scan)
         bottom_layout.addWidget(self.start_button)
 
@@ -170,7 +173,7 @@ class MainWindow(QMainWindow):
         delete_icon = QIcon(resource_path("img/DELETE128.png"))
         self.delete_button.setIcon(delete_icon)
         self.delete_button.setIconSize(QSize(90, 90))
-        self.delete_button.setToolTip("Delete Selected")
+        self.delete_button.setToolTip("Delete selected files")
         self.delete_button.clicked.connect(self.delete_selected)
         self.delete_button.setEnabled(False)
         bottom_layout.addWidget(self.delete_button)
