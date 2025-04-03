@@ -3,9 +3,9 @@ import sys
 import imagehash
 from PIL import Image
 from PyQt6 import QtWidgets, QtCore, QtGui
-from PyQt6.QtWidgets import QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QCheckBox, QScrollArea, QProgressDialog, QMessageBox
+from PyQt6.QtWidgets import QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QCheckBox, QScrollArea, QProgressDialog, QMessageBox, QApplication
 from PyQt6.QtCore import QThread, pyqtSignal, QSize
-from PyQt6.QtGui import QFont, QImage, QPixmap, QIcon
+from PyQt6.QtGui import QFont, QImage, QPixmap, QIcon, QPalette, QColor
 from datetime import datetime
 
 # Helper function to get the correct path to resources
@@ -15,6 +15,30 @@ def resource_path(relative_path):
     else:
         base_path = os.path.dirname(__file__)
     return os.path.join(base_path, relative_path)
+
+# Function to apply dark theme
+def apply_dark_theme(app):
+    # Set the style to Fusion
+    app.setStyle("Fusion")
+
+    # Define a dark palette
+    dark_palette = QPalette()
+    dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
+    dark_palette.setColor(QPalette.ColorRole.Base, QColor(25, 25, 25))
+    dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 255))
+    dark_palette.setColor(QPalette.ColorRole.ToolTipText, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
+    dark_palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ColorRole.ButtonText, QColor(255, 255, 255))
+    dark_palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
+    dark_palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+    dark_palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+    dark_palette.setColor(QPalette.ColorRole.HighlightedText, QColor(0, 0, 0))
+
+    # Apply the palette to the application
+    app.setPalette(dark_palette)
 
 # Function to find duplicate images
 def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=False, included_extensions=None):
@@ -182,12 +206,11 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(bottom_layout)
 
-        # Status bar (unchanged)
+        # Status bar
         self.status_bar = QtWidgets.QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Ready")
 
-    # Methods below remain unchanged
     def select_folder(self):
         folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Folder")
         if folder:
@@ -373,6 +396,7 @@ class MainWindow(QMainWindow):
 # Run the application
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
+    apply_dark_theme(app)
     window = MainWindow()
     window.show()
     app.exec()
