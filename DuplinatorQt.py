@@ -3,9 +3,9 @@ import sys
 import imagehash
 from PIL import Image
 from PyQt6 import QtWidgets, QtCore, QtGui
-from PyQt6.QtWidgets import QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QCheckBox, QScrollArea, QProgressDialog, QMessageBox, QApplication
-from PyQt6.QtCore import QThread, pyqtSignal, QSize
-from PyQt6.QtGui import QFont, QImage, QPixmap, QIcon, QPalette, QColor
+from PyQt6.QtWidgets import QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QCheckBox, QScrollArea, QProgressDialog, QMessageBox, QApplication, QWidget
+from PyQt6.QtCore import QThread, pyqtSignal, QSize, QUrl
+from PyQt6.QtGui import QFont, QImage, QPixmap, QIcon, QPalette, QColor, QDesktopServices
 from datetime import datetime
 
 # Helper function to get the correct path to resources
@@ -21,7 +21,7 @@ def apply_dark_theme(app):
     # Set the style to Fusion
     app.setStyle("Fusion")
 
-    # Define a dark palette
+    # Defines the colour scheme via PyQt6
     dark_palette = QPalette()
     dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
     dark_palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
@@ -37,7 +37,7 @@ def apply_dark_theme(app):
     dark_palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
     dark_palette.setColor(QPalette.ColorRole.HighlightedText, QColor(0, 0, 0))
 
-    # Apply the palette to the application
+    # Apply the colour scheme
     app.setPalette(dark_palette)
 
 # Function to find duplicate images
@@ -92,7 +92,52 @@ class ScanThread(QThread):
             self.finished.emit(duplicates)
         except Exception as e:
             self.finished.emit(e)
+            
+#Make the thumbnail view clickable
+class ClickableLabel(QLabel):
+    def __init__(self, filepath, parent=None):
+        super().__init__(parent)
+        self.filepath = filepath
+        self.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self.show_large_image()
+
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self.open_image()
+
+    def show_large_image(self):
+        image = QImage(self.filepath)
+        if not image.isNull():
+            large_pixmap = QPixmap.fromImage(image).scaled(
+                400, 400,
+                QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                QtCore.Qt.TransformationMode.SmoothTransformation
+            )
+            popup = ImagePopup(large_pixmap)
+            popup.show()
+
+    def open_image(self):
+        QDesktopServices.openUrl(QUrl.fromLocalFile(self.filepath))
+
+#Larger preview popout functionality      
+class ImagePopup(QWidget):
+    def __init__(self, pixmap, parent=None):
+        super().__init__(parent, QtCore.Qt.WindowType.Popup)
+        layout = QVBoxLayout(self)
+        label = QLabel()
+        label.setPixmap(pixmap)
+        layout.addWidget(label)
+        self.setGeometry(0, 0, pixmap.width(), pixmap.height())
+        # Center on screen
+        screen_geometry = QApplication.primaryScreen().geometry()
+        self.move(screen_geometry.center() - self.rect().center())
+
+    def mousePressEvent(self, event):
+        self.close()
+        
 # Main application window
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -290,7 +335,7 @@ class MainWindow(QMainWindow):
                 left_layout = QVBoxLayout(left_frame)
                 rel_path1 = os.path.relpath(filepath1, folder_path)
                 if size_kb1 is not None:
-                    thumbnail_label1 = QLabel()
+                    thumbnail_label1 = ClickableLabel(filepath1)
                     if self.thumbnails[filepath1]:
                         thumbnail_label1.setPixmap(self.thumbnails[filepath1])
                     else:
@@ -346,7 +391,7 @@ class MainWindow(QMainWindow):
                 right_layout = QVBoxLayout(right_frame)
                 rel_path2 = os.path.relpath(filepath2, folder_path)
                 if size_kb2 is not None:
-                    thumbnail_label2 = QLabel()
+                    thumbnail_label2 = ClickableLabel(filepath2)
                     if self.thumbnails[filepath2]:
                         thumbnail_label2.setPixmap(self.thumbnails[filepath2])
                     else:
