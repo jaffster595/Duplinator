@@ -2,7 +2,7 @@
 
 A passion project that I'm creating whilst I learn Python. If any random or qwerky features appear then it's likely due to me being curious about how something works. The basic functionality will remain the same, though.
 
-Duplinator is a small tool which finds any duplicate images within a particular folder by comparing the hashes of every image file within that folder. It returns duplicate image pairs and allows you to delete one of them from within the application.
+Duplinator is a small tool which finds any duplicate images within a particular folder by comparing the hashes of every image file within that folder. It returns duplicate image pairs and allows you to delete one of them from within the application. It uses the imagehash package to get hashes for all the images within the specified folder and uses PyQt6 for the GUI.
 
 ![image](https://github.com/user-attachments/assets/85e6c15f-9c2d-4d68-88d5-4fcf29706f2d)
 
@@ -20,13 +20,29 @@ Supported image formats are:
 
 TBC
 
-## Installation
+# Installation
 
 Two options:
 
-# OPTION 1 - RUN FROM AN EXECUTABLE:
+## OPTION 1 - RUN WITH PYTHON:
 
-Head to the releases page and download the standalone portable executable. This has Python and all its dependencies packaged in the .exe file so it just works without any configuration work.
+1. **Python**: Made using Python 3.10, but any supported version should work fine.
+
+2. **Dependencies**: Install the required Python packages using pip:
+
+   ```bash
+   pip install pillow imagehash PyQt6 
+   ```
+3. Clone this repository then run duplinator.py:
+
+   ```bash
+   python duplinatorqt.py
+   ```
+
+## OPTION 2 - RUN FROM AN EXECUTABLE:
+
+Head to the releases page and download the standalone portable executable. This has Python and all its dependencies packaged in the .exe file so it should just work.
+OR
 You can also build this yourself if you like:
 
 ```bash
@@ -39,20 +55,6 @@ pyinstaller --onefile --add-data "img;img" duplinatorqt.py
 ```
 Head into the /dist/ folder and run your executable file.
 
-# OPTION 2 - RUN WITH PYTHON:
-
-1. **Python**: Made using Python 3.10, but any recent version should work fine.
-
-2. **Dependencies**: Install the required Python packages using pip:
-
-   ```bash
-   pip install pillow imagehash PyQt6 
-   ```
-3. Clone this repository then run duplinator.py:
-
-   ```bash
-   python duplinatorqt.py
-   ```
 
 ## Important
 
@@ -82,7 +84,7 @@ Head into the /dist/ folder and run your executable file.
 **To-Do - Features to add next:**
 
 	- Single clicking on a thumbnail will launch a larger preview window
-	- Double clicking on a thumbnail will launch the native image application and open the image file from source
+	- Double clicking on a thumbnail will launch the native image application and open the image file from source - DONE
 	- Replace the radial tick boxes with a slider for left/right image choices. Also add a global left/right slider to toggle the choice on all resulting image pairs
 	- Multi-threaded hashing for faster scanning
 	- Add a tick box for 'Save History' which stores scanned folder locations making it easier to revisit common folders (ENABLED BY DEFAULT)
@@ -109,5 +111,3 @@ The application uses the `imagehash` library to compute perceptual hashes of ima
 
 If you encounter issues or have suggestions for improvements, please open an issue on this GitHub repository. Contributions are welcome!
 
-
-```
