@@ -2,7 +2,7 @@
 
 A passion project that I'm creating whilst I learn Python. If any random or qwerky features appear then it's likely due to me being curious about how something works. The basic functionality will remain the same, though.
 
-It's a small tool which finds any duplicate images within a particular folder by comparing the hashes of every image file within that folder. It returns duplicate image pairs and allows you to delete one of them from within the application.
+Duplinator is a small tool which finds any duplicate images within a particular folder by comparing the hashes of every image file within that folder. It returns duplicate image pairs and allows you to delete one of them from within the application.
 
 ![image](https://github.com/user-attachments/assets/85e6c15f-9c2d-4d68-88d5-4fcf29706f2d)
 
@@ -76,6 +76,23 @@ Head into the /dist/ folder and run your executable file.
 5. **Delete Duplicates**: 
    - Click the "Delete" button to remove the specified images
 
+
+## Roadmap
+
+**To-Do - Features to add next:**
+
+	- Single clicking on a thumbnail will launch a larger preview window
+	- Double clicking on a thumbnail will launch the native image application and open the image file from source
+	- Replace the radial tick boxes with a slider for left/right image choices. Also add a global left/right slider to toggle the choice on all resulting image pairs
+	- Multi-threaded hashing for faster scanning
+	- Add a tick box for 'Save History' which stores scanned folder locations making it easier to revisit common folders (ENABLED BY DEFAULT)
+	- Add a tick box for 'Use Recycle Bin' so that the user can specify if they want images to be completely deleted or if they should go to the recycle bin (ENABLED BY DEFAULT)
+	- After deleting an image, the image pair should remain in the results box but should be greyed out so that the user knows which images have been actioned already without needing to rescan
+
+**To-Do - Possible features for the future:**
+
+	- Ability to scan an entire drive instead of just a single folder
+	- Ability to provide a single image file which the application will attempt to locate duplicates of within a particular folder or drive.
 
 ## How It Works
 
