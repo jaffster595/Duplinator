@@ -83,8 +83,8 @@ Head into the /dist/ folder and run your executable file.
 
 **To-Do - Features to add next:**
 
-	- Single clicking on a thumbnail will launch a larger preview window
-	- Double clicking on a thumbnail will launch the native image application and open the image file from source - DONE
+	- ~~ Single clicking on a thumbnail will launch a larger preview window
+	- ~~ Double clicking on a thumbnail will launch the native image application and open the image file from source - DONE
 	- Replace the radial tick boxes with a slider for left/right image choices. Also add a global left/right slider to toggle the choice on all resulting image pairs
 	- Multi-threaded hashing for faster scanning
 	- Add a tick box for 'Save History' which stores scanned folder locations making it easier to revisit common folders (ENABLED BY DEFAULT)
