@@ -326,8 +326,13 @@ class MainWindow(QMainWindow):
                                 new_height1 = max_size
                                 new_width1 = int((width1 / height1) * max_size)
                             thumbnail1 = img1.resize((new_width1, new_height1), Image.Resampling.LANCZOS).convert("RGB")
+                            grey_thumbnail1 = thumbnail1.convert("L").convert("RGB")
                             qt_img1 = QImage(thumbnail1.tobytes(), thumbnail1.width, thumbnail1.height, thumbnail1.width * 3, QImage.Format.Format_RGB888)
-                            self.thumbnails[filepath1] = QPixmap.fromImage(qt_img1)
+                            grey_qt_img1 = QImage(grey_thumbnail1.tobytes(), grey_thumbnail1.width, grey_thumbnail1.height, grey_thumbnail1.width * 3, QImage.Format.Format_RGB888)
+                            self.thumbnails[filepath1] = {
+                                "original": QPixmap.fromImage(qt_img1),
+                                "grey": QPixmap.fromImage(grey_qt_img1)
+                            }
                 except Exception as e:
                     print(f"Error processing {filepath1}: {e}")
                     size_kb1, width1, height1, created1, modified1 = None, 0, 0, "Unknown", "Unknown"
@@ -338,7 +343,7 @@ class MainWindow(QMainWindow):
                 if size_kb1 is not None:
                     thumbnail_label1 = ClickableLabel(filepath1)
                     if self.thumbnails[filepath1]:
-                        thumbnail_label1.setPixmap(self.thumbnails[filepath1])
+                        thumbnail_label1.setPixmap(self.thumbnails[filepath1]["original"])
                     else:
                         thumbnail_label1.setText("[Thumbnail Error]")
                     left_layout.addWidget(thumbnail_label1)
@@ -365,7 +370,7 @@ class MainWindow(QMainWindow):
                 slider.setTickInterval(1)
                 slider.setSingleStep(1)
                 slider.setPageStep(1)
-                # Apply stylesheet to customize slider appearance
+                #Stylesheet for slider customisation
                 slider.setStyleSheet("""
                     QSlider::groove:horizontal {
                         border: 5px solid #fff;
@@ -403,7 +408,7 @@ class MainWindow(QMainWindow):
                 labels_layout.addWidget(right_label)
                 labels_layout.addStretch(1)
                 choice_layout.addLayout(labels_layout)
-                pair_layout.addWidget(choice_frame, stretch=0)  # Add with stretch factor
+                pair_layout.addWidget(choice_frame, stretch=0)
 
                 # Right image processing
                 try:
@@ -422,8 +427,13 @@ class MainWindow(QMainWindow):
                                 new_height2 = max_size
                                 new_width2 = int((width2 / height2) * max_size)
                             thumbnail2 = img2.resize((new_width2, new_height2), Image.Resampling.LANCZOS).convert("RGB")
+                            grey_thumbnail2 = thumbnail2.convert("L").convert("RGB")
                             qt_img2 = QImage(thumbnail2.tobytes(), thumbnail2.width, thumbnail2.height, thumbnail2.width * 3, QImage.Format.Format_RGB888)
-                            self.thumbnails[filepath2] = QPixmap.fromImage(qt_img2)
+                            grey_qt_img2 = QImage(grey_thumbnail2.tobytes(), grey_thumbnail2.width, grey_thumbnail2.height, grey_thumbnail2.width * 3, QImage.Format.Format_RGB888)
+                            self.thumbnails[filepath2] = {
+                                "original": QPixmap.fromImage(qt_img2),
+                                "grey": QPixmap.fromImage(grey_qt_img2)
+                            }
                 except Exception as e:
                     print(f"Error processing {filepath2}: {e}")
                     size_kb2, width2, height2, created2, modified2 = None, 0, 0, "Unknown", "Unknown"
@@ -434,35 +444,54 @@ class MainWindow(QMainWindow):
                 if size_kb2 is not None:
                     thumbnail_label2 = ClickableLabel(filepath2)
                     if self.thumbnails[filepath2]:
-                        thumbnail_label2.setPixmap(self.thumbnails[filepath2])
+                        thumbnail_label2.setPixmap(self.thumbnails[filepath2]["original"])
                     else:
                         thumbnail_label2.setText("[Thumbnail Error]")
                     right_layout.addWidget(thumbnail_label2)
                     info_text2 = f"Filename: {rel_path2}\nSize: {size_kb2:.2f} KB\nRes: {width2}x{height2}\nCreated: {created2}\nModified: {modified2}"
                     info_label2 = QLabel(info_text2)
                     info_label2.setToolTip(filepath2)
-                    info_label2.setWordWrap(True)  # Enable word wrapping
+                    info_label2.setWordWrap(True)
                     right_layout.addWidget(info_label2)
                 else:
                     error_label2 = QLabel(f"{rel_path2}\n[Error retrieving info]")
                     right_layout.addWidget(error_label2)
-                pair_layout.addWidget(right_frame, stretch=1)  # Add with stretch factor
+                pair_layout.addWidget(right_frame, stretch=1)
 
                 self.inner_layout.addLayout(pair_layout)
-                self.pairs.append({"file1": filepath1, "file2": filepath2, "choice": 1})
+                self.pairs.append({
+                    "file1": filepath1,
+                    "file2": filepath2,
+                    "choice": 1,
+                    "left_label": thumbnail_label1,
+                    "right_label": thumbnail_label2
+                })
                 slider.valueChanged.connect(lambda value, idx=i: self.update_choice(idx, value))
+            self.delete_button.setEnabled(True)
 
     def update_choice(self, index, value):
-    # Update the choice for a specific pair based on slider position
-        self.pairs[index]["choice"] = value
+        pair = self.pairs[index]
+        pair["choice"] = value
+        left_label = pair["left_label"]
+        right_label = pair["right_label"]
+        if self.thumbnails[pair["file1"]] is not None:
+            if value == 0:  # Left selected for deletion
+                left_label.setPixmap(self.thumbnails[pair["file1"]]["grey"])
+            else:
+                left_label.setPixmap(self.thumbnails[pair["file1"]]["original"])
+        if self.thumbnails[pair["file2"]] is not None:
+            if value == 2:  # Right selected for deletion
+                right_label.setPixmap(self.thumbnails[pair["file2"]]["grey"])
+            else:
+                right_label.setPixmap(self.thumbnails[pair["file2"]]["original"])
 
     def delete_selected(self):
         to_delete = set()
         for pair in self.pairs:
-            checked_id = pair["button_group"].checkedId()
-            if checked_id == 0:
+            choice = pair["choice"]
+            if choice == 0:
                 to_delete.add(pair["file1"])
-            elif checked_id == 1:
+            elif choice == 2:
                 to_delete.add(pair["file2"])
         if not to_delete:
             QMessageBox.information(self, "Info", "No images selected for deletion.")
@@ -479,6 +508,8 @@ class MainWindow(QMainWindow):
                 except Exception as e:
                     QMessageBox.critical(self, "Error", f"Failed to delete {file}: {e}")
             QMessageBox.information(self, "Info", "Selected images deleted.")
+            # Re-run the scan to refresh the list
+            self.run_scan()
 
 # Run the application
 if __name__ == "__main__":
