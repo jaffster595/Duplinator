@@ -4,7 +4,7 @@ import imagehash
 from PIL import Image
 from PyQt6 import QtWidgets, QtCore, QtGui
 from PyQt6.QtWidgets import QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QCheckBox, QScrollArea, QProgressDialog, QMessageBox, QApplication, QWidget
-from PyQt6.QtCore import QThread, pyqtSignal, QSize, QUrl
+from PyQt6.QtCore import QThread, pyqtSignal, QSize, QUrl, Qt
 from PyQt6.QtGui import QFont, QImage, QPixmap, QIcon, QPalette, QColor, QDesktopServices
 from datetime import datetime
 
@@ -309,6 +309,7 @@ class MainWindow(QMainWindow):
                     separator.setFrameShape(QFrame.Shape.HLine)
                     self.inner_layout.addWidget(separator)
                 pair_layout = QHBoxLayout()
+                # Left image processing
                 try:
                     stat1 = os.stat(filepath1)
                     size_kb1 = stat1.st_size / 1024
@@ -341,30 +342,70 @@ class MainWindow(QMainWindow):
                     else:
                         thumbnail_label1.setText("[Thumbnail Error]")
                     left_layout.addWidget(thumbnail_label1)
-                    info_text1 = f"{rel_path1}\nSize: {size_kb1:.2f} KB\nRes: {width1}x{height1}\nCreated: {created1}\nModified: {modified1}"
+                    info_text1 = f"Filename: {rel_path1}\nSize: {size_kb1:.2f} KB\nRes: {width1}x{height1}\nCreated: {created1}\nModified: {modified1}"
                     info_label1 = QLabel(info_text1)
                     info_label1.setToolTip(filepath1)
+                    info_label1.setWordWrap(True)  # Enable word wrapping
                     left_layout.addWidget(info_label1)
                 else:
                     error_label1 = QLabel(f"{rel_path1}\n[Error retrieving info]")
                     left_layout.addWidget(error_label1)
-                pair_layout.addWidget(left_frame)
+                pair_layout.addWidget(left_frame, stretch=1)  # Add with stretch factor
+
                 choice_frame = QFrame()
                 choice_layout = QVBoxLayout(choice_frame)
                 choice_label = QLabel("Delete which image?")
                 choice_layout.addWidget(choice_label)
-                button_group = QtWidgets.QButtonGroup()
-                left_radio = QtWidgets.QRadioButton("Left")
-                right_radio = QtWidgets.QRadioButton("Right")
-                neither_radio = QtWidgets.QRadioButton("Neither")
-                button_group.addButton(left_radio, 0)
-                button_group.addButton(right_radio, 1)
-                button_group.addButton(neither_radio, 2)
-                neither_radio.setChecked(True)
-                choice_layout.addWidget(left_radio)
-                choice_layout.addWidget(right_radio)
-                choice_layout.addWidget(neither_radio)
-                pair_layout.addWidget(choice_frame)
+                
+                slider = QSlider(Qt.Orientation.Horizontal)
+                slider.setMinimum(0)  # Left: Delete left image
+                slider.setMaximum(2)  # Right: Delete right image
+                slider.setValue(1)   # Center: Neither (default)
+                slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+                slider.setTickInterval(1)
+                slider.setSingleStep(1)
+                slider.setPageStep(1)
+                # Apply stylesheet to customize slider appearance
+                slider.setStyleSheet("""
+                    QSlider::groove:horizontal {
+                        border: 5px solid #fff;
+                        background: #5a5a5a;
+                        height: 10px;
+                        border-radius: 4px;
+                    }
+                    QSlider::sub-page:horizontal {
+                        background: #5a5a5a;
+                    }
+                    QSlider::add-page:horizontal {
+                        background: #5a5a5a;
+                    }
+                    QSlider::handle:horizontal {
+                        background: #b3b3b3;
+                        border: 1px solid #777;
+                        width: 13px;
+                        margin-top: -2px;
+                        margin-bottom: -2px;
+                        border-radius: 4px;
+                    }
+                """)
+                choice_layout.addWidget(slider)
+
+                # Labels below slider
+                labels_layout = QHBoxLayout()
+                left_label = QLabel("Left")
+                neither_label = QLabel("Neither")
+                right_label = QLabel("Right")
+                labels_layout.addStretch(1)
+                labels_layout.addWidget(left_label)
+                labels_layout.addStretch(1)
+                labels_layout.addWidget(neither_label)
+                labels_layout.addStretch(1)
+                labels_layout.addWidget(right_label)
+                labels_layout.addStretch(1)
+                choice_layout.addLayout(labels_layout)
+                pair_layout.addWidget(choice_frame, stretch=0)  # Add with stretch factor
+
+                # Right image processing
                 try:
                     stat2 = os.stat(filepath2)
                     size_kb2 = stat2.st_size / 1024
@@ -397,22 +438,23 @@ class MainWindow(QMainWindow):
                     else:
                         thumbnail_label2.setText("[Thumbnail Error]")
                     right_layout.addWidget(thumbnail_label2)
-                    info_text2 = f"{rel_path2}\nSize: {size_kb2:.2f} KB\nRes: {width2}x{height2}\nCreated: {created2}\nModified: {modified2}"
+                    info_text2 = f"Filename: {rel_path2}\nSize: {size_kb2:.2f} KB\nRes: {width2}x{height2}\nCreated: {created2}\nModified: {modified2}"
                     info_label2 = QLabel(info_text2)
                     info_label2.setToolTip(filepath2)
+                    info_label2.setWordWrap(True)  # Enable word wrapping
                     right_layout.addWidget(info_label2)
                 else:
                     error_label2 = QLabel(f"{rel_path2}\n[Error retrieving info]")
                     right_layout.addWidget(error_label2)
-                pair_layout.addWidget(right_frame)
-                self.inner_layout.addLayout(pair_layout)
-                self.pairs.append({"file1": filepath1, "file2": filepath2, "button_group": button_group})
-                button_group.buttonClicked.connect(self.update_button_states)
-        self.update_button_states()
+                pair_layout.addWidget(right_frame, stretch=1)  # Add with stretch factor
 
-    def update_button_states(self):
-        any_selected = any(pair["button_group"].checkedId() in [0, 1] for pair in self.pairs)
-        self.delete_button.setEnabled(any_selected)
+                self.inner_layout.addLayout(pair_layout)
+                self.pairs.append({"file1": filepath1, "file2": filepath2, "choice": 1})
+                slider.valueChanged.connect(lambda value, idx=i: self.update_choice(idx, value))
+
+    def update_choice(self, index, value):
+    # Update the choice for a specific pair based on slider position
+        self.pairs[index]["choice"] = value
 
     def delete_selected(self):
         to_delete = set()
