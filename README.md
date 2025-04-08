@@ -83,18 +83,18 @@ Head into the /dist/ folder and run your executable file.
 
 **To-Do - Features to add next:**
 
-	- ~~Single clicking on a thumbnail will launch a larger preview window~~
-	- ~~Double clicking on a thumbnail will launch the native image application and open the image file from source~~ - DONE
-	- Replace the radial tick boxes with a slider for left/right image choices. Also add a global left/right slider to toggle the choice on all resulting image pairs
-	- Multi-threaded hashing for faster scanning
-	- Add a tick box for 'Save History' which stores scanned folder locations making it easier to revisit common folders (ENABLED BY DEFAULT)
-	- Add a tick box for 'Use Recycle Bin' so that the user can specify if they want images to be completely deleted or if they should go to the recycle bin (ENABLED BY DEFAULT)
-	- After deleting an image, the image pair should remain in the results box but should be greyed out so that the user knows which images have been actioned already without needing to rescan
+~~Single clicking on a thumbnail will launch a larger preview window~~ - NOT DOING
+- ~~Double clicking on a thumbnail will launch the native image application and open the image file from source~~ - DONE
+- Replace the radial tick boxes with a slider for left/right image choices. Also add a global left/right slider to toggle the choice on all resulting image pairs - IN PROGRESS
+- Multi-threaded hashing for faster scanning
+- Add a tick box for 'Save History' which stores scanned folder locations making it easier to revisit common folders (ENABLED BY DEFAULT)
+- Add a tick box for 'Use Recycle Bin' so that the user can specify if they want images to be completely deleted or if they should go to the recycle bin (ENABLED BY DEFAULT)
+- After deleting an image, the image pair should remain in the results box but should be greyed out so that the user knows which images have been actioned already without needing to rescan
 
 **To-Do - Possible features for the future:**
 
-	- Ability to scan an entire drive instead of just a single folder
-	- Ability to provide a single image file which the application will attempt to locate duplicates of within a particular folder or drive.
+- Ability to scan an entire drive instead of just a single folder
+- Ability to provide a single image file which the application will attempt to locate duplicates of within a particular folder or drive.
 
 ## How It Works
 
