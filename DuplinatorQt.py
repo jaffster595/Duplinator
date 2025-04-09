@@ -8,6 +8,10 @@ from PyQt6.QtCore import QThread, pyqtSignal, QSize, QUrl, Qt
 from PyQt6.QtGui import QFont, QImage, QPixmap, QIcon, QPalette, QColor, QDesktopServices
 from datetime import datetime
 
+class NonWheelSlider(QSlider):
+    def wheelEvent(self, event):
+        event.ignore()
+
 # Helper function to get the correct path to resources
 def resource_path(relative_path):
     if getattr(sys, 'frozen', False):
@@ -350,19 +354,19 @@ class MainWindow(QMainWindow):
                     info_text1 = f"Filename: {rel_path1}\nSize: {size_kb1:.2f} KB\nRes: {width1}x{height1}\nCreated: {created1}\nModified: {modified1}"
                     info_label1 = QLabel(info_text1)
                     info_label1.setToolTip(filepath1)
-                    info_label1.setWordWrap(True)  # Enable word wrapping
+                    info_label1.setWordWrap(True)
                     left_layout.addWidget(info_label1)
                 else:
                     error_label1 = QLabel(f"{rel_path1}\n[Error retrieving info]")
                     left_layout.addWidget(error_label1)
-                pair_layout.addWidget(left_frame, stretch=1)  # Add with stretch factor
+                pair_layout.addWidget(left_frame, stretch=1)
 
                 choice_frame = QFrame()
                 choice_layout = QVBoxLayout(choice_frame)
                 choice_label = QLabel("Delete which image?")
                 choice_layout.addWidget(choice_label)
                 
-                slider = QSlider(Qt.Orientation.Horizontal)
+                slider = NonWheelSlider(Qt.Orientation.Horizontal)
                 slider.setMinimum(0)  # Left: Delete left image
                 slider.setMaximum(2)  # Right: Delete right image
                 slider.setValue(1)   # Center: Neither (default)
