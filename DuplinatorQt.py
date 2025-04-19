@@ -3,11 +3,13 @@ import sys
 import imagehash
 from PIL import Image
 from PyQt6 import QtWidgets, QtCore, QtGui
-from PyQt6.QtWidgets import QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QCheckBox, QScrollArea, QProgressDialog, QMessageBox, QApplication, QWidget
+from PyQt6.QtWidgets import QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QCheckBox, QScrollArea, QProgressDialog, QMessageBox, QApplication, QWidget, QSpinBox
 from PyQt6.QtCore import QThread, pyqtSignal, QSize, QUrl, Qt
 from PyQt6.QtGui import QFont, QImage, QPixmap, QIcon, QPalette, QColor, QDesktopServices
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
+#To stop the mousewheel moving the sliders over if the cursor was positioned over them when scrolling
 class NonWheelSlider(QSlider):
     def wheelEvent(self, event):
         event.ignore()
@@ -22,7 +24,6 @@ def resource_path(relative_path):
 
 # Function to apply dark theme
 def apply_dark_theme(app):
-    # Set the style to Fusion
     app.setStyle("Fusion")
 
     # Defines the colour scheme via PyQt6
@@ -30,7 +31,7 @@ def apply_dark_theme(app):
     dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
     dark_palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
     dark_palette.setColor(QPalette.ColorRole.Base, QColor(25, 25, 25))
-    dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(95, 95, 95))
     dark_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 255))
     dark_palette.setColor(QPalette.ColorRole.ToolTipText, QColor(53, 53, 53))
     dark_palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
@@ -40,59 +41,75 @@ def apply_dark_theme(app):
     dark_palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
     dark_palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
     dark_palette.setColor(QPalette.ColorRole.HighlightedText, QColor(0, 0, 0))
-
-    # Apply the colour scheme
     app.setPalette(dark_palette)
 
 # Function to find duplicate images
-def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=False, included_extensions=None):
+def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=False, included_extensions=None, multi_thread=False, num_threads=1):
     included_extensions = tuple(included_extensions)
-    image_hashes = {}
-    duplicates = []
+    image_files = []
     if include_subfolders:
         for root, _, files in os.walk(folder_path):
             for file in files:
                 if file.lower().endswith(included_extensions):
-                    filepath = os.path.join(root, file)
-                    try:
-                        with Image.open(filepath) as img:
-                            image_hash = imagehash.phash(img, hash_size=hash_size)
-                            for other_filepath, other_hash in image_hashes.items():
-                                if (image_hash - other_hash) <= threshold:
-                                    duplicates.append((other_filepath, filepath))
-                            image_hashes[filepath] = image_hash
-                    except Exception as e:
-                        print(f"Error processing {filepath}: {e}")
+                    image_files.append(os.path.join(root, file))
     else:
         for file in os.listdir(folder_path):
             if file.lower().endswith(included_extensions):
-                filepath = os.path.join(folder_path, file)
-                try:
-                    with Image.open(filepath) as img:
-                        image_hash = imagehash.phash(img, hash_size=hash_size)
-                        for other_filepath, other_hash in image_hashes.items():
-                            if (image_hash - other_hash) <= threshold:
-                                duplicates.append((other_filepath, filepath))
-                        image_hashes[filepath] = image_hash
-                except Exception as e:
-                    print(f"Error processing {filepath}: {e}")
+                image_files.append(os.path.join(folder_path, file))
+                
+    image_hashes = {}
+    if multi_thread:
+        def compute_hash(filepath):
+            try:
+                with Image.open(filepath) as img:
+                    return filepath, imagehash.phash(img, hash_size=hash_size)
+            except Exception as e:
+                print(f"Error processing {filepath}: {e}")
+                return filepath, None
+        
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [executor.submit(compute_hash, filepath) for filepath in image_files]
+            for future in futures:
+                filepath, hash_value = future.result()
+                if hash_value is not None:
+                    image_hashes[filepath] = hash_value
+    else:
+        for filepath in image_files:
+            try:
+                with Image.open(filepath) as img:
+                    image_hashes[filepath] = imagehash.phash(img, hash_size=hash_size)
+            except Exception as e:
+                print(f"Error processing {filepath}: {e}")
+    
+    duplicates = []
+    filepaths = list(image_hashes.keys())
+    for i in range(len(filepaths)):
+        for j in range(i + 1, len(filepaths)):
+            filepath1 = filepaths[i]
+            filepath2 = filepaths[j]
+            hash1 = image_hashes[filepath1]
+            hash2 = image_hashes[filepath2]
+            if (hash1 - hash2) <= threshold:
+                duplicates.append((filepath1, filepath2))
     return duplicates
 
 # ScanThread class
 class ScanThread(QThread):
     finished = pyqtSignal(object)
 
-    def __init__(self, folder_path, hash_size, threshold, include_subfolders, included_extensions):
+    def __init__(self, folder_path, hash_size, threshold, include_subfolders, included_extensions, multi_thread, num_threads):
         super().__init__()
         self.folder_path = folder_path
         self.hash_size = hash_size
         self.threshold = threshold
         self.include_subfolders = include_subfolders
         self.included_extensions = included_extensions
+        self.multi_thread = multi_thread
+        self.num_threads = num_threads
 
     def run(self):
         try:
-            duplicates = find_duplicate_images(self.folder_path, self.hash_size, self.threshold, self.include_subfolders, self.included_extensions)
+            duplicates = find_duplicate_images(self.folder_path, self.hash_size, self.threshold, self.include_subfolders, self.included_extensions, self.multi_thread, self.num_threads)
             self.finished.emit(duplicates)
         except Exception as e:
             self.finished.emit(e)
@@ -147,10 +164,12 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Duplinator")
+        icon_path = resource_path("img/icon.png")
+        self.setWindowIcon(QIcon(icon_path))
         self.thumbnails = {}
         self.pairs = []
         self.setup_ui()
-        self.resize(800, 600)
+        self.resize(800, 800)
 
     def setup_ui(self):
         central_widget = QtWidgets.QWidget()
@@ -212,10 +231,25 @@ class MainWindow(QMainWindow):
         self.include_subfolders_checkbox = QCheckBox("Include subfolders")
         self.include_subfolders_checkbox.setToolTip("Specifies if any subfolders within the specified folder should be included in the search.")
         params_layout.addWidget(self.include_subfolders_checkbox)
+        
+        self.multi_thread_checkbox = QCheckBox("Multi-thread")
+        self.multi_thread_checkbox.setToolTip("Enable multi-threading for faster hash computation. Only required when scanning a folder with lots of large images. Default is 4.")
+        params_layout.addWidget(self.multi_thread_checkbox)
+        thread_count_layout = QHBoxLayout()
+        thread_count_label = QLabel("Threads:")
+        self.thread_count_spinbox = QSpinBox()
+        self.thread_count_spinbox.setRange(1, 32)
+        self.thread_count_spinbox.setValue(4)
+        self.thread_count_spinbox.setEnabled(False)
+        thread_count_layout.addWidget(thread_count_label)
+        thread_count_layout.addWidget(self.thread_count_spinbox)
+        thread_count_layout.addStretch()
+        params_layout.addLayout(thread_count_layout)
         main_layout.addWidget(params_frame)
 
         self.hash_size_slider.valueChanged.connect(lambda: self.hash_size_value_label.setText(str(self.hash_size_slider.value())))
         self.threshold_slider.valueChanged.connect(lambda: self.threshold_value_label.setText(str(self.threshold_slider.value())))
+        self.multi_thread_checkbox.toggled.connect(self.toggle_thread_count)
 
         # Scroll area
         self.scroll_area = QScrollArea()
@@ -260,6 +294,9 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Ready")
 
+    def toggle_thread_count(self, checked):
+        self.thread_count_spinbox.setEnabled(checked)
+
     def select_folder(self):
         folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Folder")
         if folder:
@@ -287,7 +324,9 @@ class MainWindow(QMainWindow):
         hash_size = self.hash_size_slider.value()
         threshold = self.threshold_slider.value()
         include_subfolders = self.include_subfolders_checkbox.isChecked()
-        self.scan_thread = ScanThread(folder_path, hash_size, threshold, include_subfolders, included_extensions)
+        multi_thread = self.multi_thread_checkbox.isChecked()
+        num_threads = self.thread_count_spinbox.value() if multi_thread else 1
+        self.scan_thread = ScanThread(folder_path, hash_size, threshold, include_subfolders, included_extensions, multi_thread, num_threads)
         self.scan_thread.finished.connect(self.on_scan_finished)
         self.scan_thread.start()
 
