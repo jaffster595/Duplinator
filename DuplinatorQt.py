@@ -331,13 +331,16 @@ class MainWindow(QMainWindow):
         self.scan_thread.start()
 
     def on_scan_finished(self, result):
-        self.progress_dialog.hide()
-        self.start_button.setEnabled(True)
-        self.status_bar.showMessage("Done.")
+        self.progress_dialog.setLabelText("Processing results...")
+        QApplication.processEvents()
         if isinstance(result, Exception):
+            self.progress_dialog.hide()
             QMessageBox.critical(self, "Error", str(result))
         else:
             self.display_results(result)
+        self.progress_dialog.hide()
+        self.start_button.setEnabled(True)
+        self.status_bar.showMessage("Done.")
 
     def display_results(self, duplicate_pairs):
         self.pairs = []
@@ -510,6 +513,10 @@ class MainWindow(QMainWindow):
                     "right_label": thumbnail_label2
                 })
                 slider.valueChanged.connect(lambda value, idx=i: self.update_choice(idx, value))
+                
+                # Adding this bit to stop the application going non-responsive when processing a large number of files
+                if i % 10 == 0:
+                    QApplication.processEvents()
             self.delete_button.setEnabled(True)
 
     def update_choice(self, index, value):
