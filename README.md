@@ -4,7 +4,7 @@ A passion project that I'm creating whilst I learn Python.
 
 Duplinator is a small tool which finds any duplicate images within a particular folder by comparing the hashes of every image file within that folder. It returns duplicate image pairs and allows you to delete one of them from within the application. It uses the imagehash package to get hashes for all the images within the specified folder and uses PyQt6 for the GUI.
 
-![image](https://github.com/user-attachments/assets/85e6c15f-9c2d-4d68-88d5-4fcf29706f2d)
+![image](https://github.com/user-attachments/assets/08f03ab7-a126-456e-b498-aa0e973b3787)
 
 Supported image formats are: 
 
