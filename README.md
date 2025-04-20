@@ -79,19 +79,18 @@ Head into the /dist/ folder and run your executable file.
 
 **To-Do - Features to add next:**
 
-~~Single clicking on a thumbnail will launch a larger preview window~~ - NOT DOING
 - ~~Double clicking on a thumbnail will launch the native image application and open the image file from source~~ - DONE
 - ~~Replace the radial tick boxes with a slider for left/right image choices. Also add a global left/right slider to toggle the choice on all resulting image pairs~~ - DONE
 - ~~Multi-threaded hashing for faster scanning~~ - DONE
 - ~~After deleting an image, the image pair should remain in the results box but should be greyed out so that the user knows which images have been actioned already without needing to rescan~~ - DONE
 - Add a tick box for 'Save History' which stores scanned folder locations making it easier to revisit common folders (ENABLED BY DEFAULT)
 - Add a tick box for 'Use Recycle Bin' so that the user can specify if they want images to be completely deleted or if they should go to the recycle bin (ENABLED BY DEFAULT)
+- Ability to choose how many levels of subfolders the application should search through after ticking 'Include subfolders'
 - Add sorting options to results page by various characteristics, such as sorting by date to get the oldest images at the top, sorting by largest files first or sort by the most certain duplicates first etc
-
-**To-Do - Possible features for the future:**
-
 - Ability to scan an entire drive instead of just a single folder
 - Ability to provide a single image file which the application will attempt to locate duplicates of within a particular folder or drive.
+
+  Suggestions are more than welcome.
 
 ## How It Works
 
