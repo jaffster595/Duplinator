@@ -331,7 +331,7 @@ class MainWindow(QMainWindow):
         self.scan_thread.start()
 
     def on_scan_finished(self, result):
-        self.progress_dialog.setLabelText("Processing results...")
+        self.progress_dialog.setLabelText("Processing results... NOTE: Duplinator may go unresponsive briefly here")
         QApplication.processEvents()
         if isinstance(result, Exception):
             self.progress_dialog.hide()
