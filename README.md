@@ -37,9 +37,9 @@ Two options:
 
 ## OPTION 2 - RUN FROM AN EXECUTABLE:
 
-Head to the releases page and download the most recent standalone portable executable. This has Python and all its dependencies packaged in the .exe file so it should just work.
+Head to the releases page (https://github.com/jaffster595/Duplinator/releases) and download the most recent standalone portable executable. This has Python and all its dependencies packaged in the .exe file so it should just work.
 OR
-You can also build this yourself if you so wish:
+You can also build this yourself if you so wish using pyinstaller:
 
 ```bash
 pip install pyinstaller
