@@ -233,12 +233,13 @@ class MainWindow(QMainWindow):
         params_layout.addWidget(self.include_subfolders_checkbox)
         
         self.multi_thread_checkbox = QCheckBox("Multi-thread")
-        self.multi_thread_checkbox.setToolTip("Enable multi-threading for faster hash computation. Only required when scanning a folder with lots of large images. Default is 4.")
+        self.multi_thread_checkbox.setToolTip("Enable multi-threading for faster hash computation. Enable if the scanning process takes too long.")
         params_layout.addWidget(self.multi_thread_checkbox)
         thread_count_layout = QHBoxLayout()
         thread_count_label = QLabel("Threads:")
         self.thread_count_spinbox = QSpinBox()
         self.thread_count_spinbox.setRange(1, 32)
+        self.thread_count_spinbox.setToolTip("Multi-threading needs to be enabled for this to work. Only increase if you have a good CPU. Default is 4.")
         self.thread_count_spinbox.setValue(4)
         self.thread_count_spinbox.setEnabled(False)
         thread_count_layout.addWidget(thread_count_label)
@@ -331,7 +332,7 @@ class MainWindow(QMainWindow):
         self.scan_thread.start()
 
     def on_scan_finished(self, result):
-        self.progress_dialog.setLabelText("Processing results... NOTE: Duplinator may go unresponsive briefly here")
+        self.progress_dialog.setLabelText("Processing results... Duplinator may appear unresponsive for a moment")
         QApplication.processEvents()
         if isinstance(result, Exception):
             self.progress_dialog.hide()
