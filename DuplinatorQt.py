@@ -43,20 +43,22 @@ def apply_dark_theme(app):
     dark_palette.setColor(QPalette.ColorRole.HighlightedText, QColor(0, 0, 0))
     app.setPalette(dark_palette)
 
-# Function to find duplicate images
-def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=False, included_extensions=None, multi_thread=False, num_threads=1):
-    included_extensions = tuple(included_extensions)
-    image_files = []
-    if include_subfolders:
-        for root, _, files in os.walk(folder_path):
-            for file in files:
-                if file.lower().endswith(included_extensions):
-                    image_files.append(os.path.join(root, file))
-    else:
-        for file in os.listdir(folder_path):
+# Function to allow extended subfolder searches greater than a single subfolder
+def list_files(folder_path, max_depth, included_extensions):
+    for root, dirs, files in os.walk(folder_path, topdown=True):
+        depth = root[len(folder_path):].count(os.sep)
+        if max_depth is not None and depth > max_depth:
+            dirs[:] = []  # Prevent descending further
+            continue
+        for file in files:
             if file.lower().endswith(included_extensions):
-                image_files.append(os.path.join(folder_path, file))
-                
+                yield os.path.join(root, file)
+
+# Function to find duplicate images
+def find_duplicate_images(folder_path, hash_size, threshold, max_depth, included_extensions, multi_thread, num_threads):
+    included_extensions = tuple(included_extensions)
+    image_files = list(list_files(folder_path, max_depth, included_extensions))
+    
     image_hashes = {}
     if multi_thread:
         def compute_hash(filepath):
@@ -97,19 +99,19 @@ def find_duplicate_images(folder_path, hash_size, threshold, include_subfolders=
 class ScanThread(QThread):
     finished = pyqtSignal(object)
 
-    def __init__(self, folder_path, hash_size, threshold, include_subfolders, included_extensions, multi_thread, num_threads):
+    def __init__(self, folder_path, hash_size, threshold, max_depth, included_extensions, multi_thread, num_threads):
         super().__init__()
         self.folder_path = folder_path
         self.hash_size = hash_size
         self.threshold = threshold
-        self.include_subfolders = include_subfolders
+        self.max_depth = max_depth
         self.included_extensions = included_extensions
         self.multi_thread = multi_thread
         self.num_threads = num_threads
 
     def run(self):
         try:
-            duplicates = find_duplicate_images(self.folder_path, self.hash_size, self.threshold, self.include_subfolders, self.included_extensions, self.multi_thread, self.num_threads)
+            duplicates = find_duplicate_images(self.folder_path, self.hash_size, self.threshold, self.max_depth, self.included_extensions, self.multi_thread, self.num_threads)
             self.finished.emit(duplicates)
         except Exception as e:
             self.finished.emit(e)
@@ -228,20 +230,32 @@ class MainWindow(QMainWindow):
         threshold_layout.addWidget(self.threshold_slider)
         threshold_layout.addWidget(self.threshold_value_label)
         params_layout.addLayout(threshold_layout)
+        
         self.include_subfolders_checkbox = QCheckBox("Include subfolders")
         self.include_subfolders_checkbox.setToolTip("Specifies if any subfolders within the specified folder should be included in the search.")
-        params_layout.addWidget(self.include_subfolders_checkbox)
+        subfolder_levels_layout = QHBoxLayout()
+        subfolder_levels_label = QLabel("Subfolder levels:")
+        self.subfolder_levels_spinbox = QSpinBox()
+        self.subfolder_levels_spinbox.setRange(0, 100)
+        self.subfolder_levels_spinbox.setValue(1)
+        self.subfolder_levels_spinbox.setEnabled(False)
+        self.subfolder_levels_spinbox.setToolTip("Specify how many levels of subfolders to include. 0 means all levels.")
+        subfolder_levels_layout.addWidget(self.include_subfolders_checkbox)
+        subfolder_levels_layout.addWidget(subfolder_levels_label)
+        subfolder_levels_layout.addWidget(self.subfolder_levels_spinbox)
+        subfolder_levels_layout.addStretch()
+        params_layout.addLayout(subfolder_levels_layout)
+        self.include_subfolders_checkbox.toggled.connect(self.subfolder_levels_spinbox.setEnabled)
         
         self.multi_thread_checkbox = QCheckBox("Multi-thread")
-        self.multi_thread_checkbox.setToolTip("Enable multi-threading for faster hash computation. Enable if the scanning process takes too long.")
-        params_layout.addWidget(self.multi_thread_checkbox)
+        self.multi_thread_checkbox.setToolTip("Enable multi-threading for faster hash computation. Only required when scanning a folder with lots of large images. Default is 4.")
         thread_count_layout = QHBoxLayout()
         thread_count_label = QLabel("Threads:")
         self.thread_count_spinbox = QSpinBox()
         self.thread_count_spinbox.setRange(1, 32)
-        self.thread_count_spinbox.setToolTip("Multi-threading needs to be enabled for this to work. Only increase if you have a good CPU. Default is 4.")
         self.thread_count_spinbox.setValue(4)
         self.thread_count_spinbox.setEnabled(False)
+        thread_count_layout.addWidget(self.multi_thread_checkbox)
         thread_count_layout.addWidget(thread_count_label)
         thread_count_layout.addWidget(self.thread_count_spinbox)
         thread_count_layout.addStretch()
@@ -318,16 +332,21 @@ class MainWindow(QMainWindow):
         self.pairs = []
         self.start_button.setEnabled(True)
         self.status_bar.showMessage("Scanning...")
-        self.progress_dialog = QProgressDialog("Scanning for duplicates...", None, 0, 0, self)
+        self.progress_dialog = QProgressDialog("Scanning for duplicates... This can take a while if there's lots of images", None, 0, 0, self)
         self.progress_dialog.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         self.progress_dialog.setMinimumDuration(0)
         self.progress_dialog.show()
         hash_size = self.hash_size_slider.value()
         threshold = self.threshold_slider.value()
         include_subfolders = self.include_subfolders_checkbox.isChecked()
+        subfolder_levels = self.subfolder_levels_spinbox.value()
+        if include_subfolders:
+            max_depth = None if subfolder_levels == 0 else subfolder_levels
+        else:
+            max_depth = 0
         multi_thread = self.multi_thread_checkbox.isChecked()
         num_threads = self.thread_count_spinbox.value() if multi_thread else 1
-        self.scan_thread = ScanThread(folder_path, hash_size, threshold, include_subfolders, included_extensions, multi_thread, num_threads)
+        self.scan_thread = ScanThread(folder_path, hash_size, threshold, max_depth, included_extensions, multi_thread, num_threads)
         self.scan_thread.finished.connect(self.on_scan_finished)
         self.scan_thread.start()
 
