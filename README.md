@@ -59,15 +59,15 @@ Head into the /dist/ folder and run your executable file.
 
 2. **Adjust Parameters**: Here's some more information on the available parameters:
       - **Hash Size**: Controls the size of the perceptual hash. A larger value increases accuracy but also increases computation time. Default is 8.
-      - **Threshold**: The maximum hash difference for two images to be considered duplicates. A lower value means stricter matching. Default is 5. This can be useful if you want to identify images which are similar but not identical.
-      - **Include Sub-Folders**: This option will include any subfolders that exist within your search directory. This only goes down one-level, so if you have sub-folders within sub-folders, these won't be included.
+      - **Threshold**: The maximum hash difference for two images to be considered duplicates. A lower value means stricter matching. Default is 5. This can be useful if you want to identify images which are similar but not identical. A Lower Threshold = Stricter matching and less results.
+      - **Include Sub-Folders**: Allows Duplinator to search through any sub-folders that exist within the specified directory. A level of '1' will include any sub-folders, a level of '2' will include sub-folders in sub-folders and so on...
       - **Multi-Thread**: Allows you to run multiple hashing threads which massively speeds up the scanning process.
   
-        Experiment with these values based on your needs. For example, a lower threshold detects only very similar images, while a higher threshold may include more variations.
+        Experiment with these values based on your needs.
 
 3. **Scan Now**: Click the 'Scan Now' button to start scanning, a progress window will appear during the process. Depending upon the number of images in the folder and the speed of your device, this can take a few moments to process. A folder with 100 images takes my machine around 10 seconds to process.
 
-4. **Review Duplicates**: Once the scan completes, duplicate image pairs will be displayed with thumbnails and basic file information (such as size, resolution, creation date etc). Adjust the toggle for images that you no longer want, to get them ready for deletion.
+4. **Review Duplicates**: Once the scan completes, duplicate image pairs will be displayed with thumbnails and basic file information (such as size, resolution, creation date etc). Adjust the toggle for images that you no longer want, to get them ready for deletion. Nothing will be deleted at this point, that only occurs after step 5.
 
 5. **Delete Duplicates**: 
    - Click the "Delete" button to remove the specified images
@@ -82,7 +82,7 @@ Head into the /dist/ folder and run your executable file.
 - ~~After deleting an image, the image pair should remain in the results box but should be greyed out so that the user knows which images have been actioned already without needing to rescan~~ - DONE
 - Add a tick box for 'Save History' which stores scanned folder locations making it easier to revisit common folders (ENABLED BY DEFAULT)
 - Add a tick box for 'Use Recycle Bin' so that the user can specify if they want images to be completely deleted or if they should go to the recycle bin (ENABLED BY DEFAULT)
-- Ability to choose how many levels of subfolders the application should search through after ticking 'Include subfolders'
+- ~~Ability to choose how many levels of subfolders the application should search through after ticking 'Include subfolders'~~ - DONE
 - Add sorting options to results page by various characteristics, such as sorting by date to get the oldest images at the top, sorting by largest files first or sort by the most certain duplicates first etc
 - Ability to scan an entire drive instead of just a single folder
 - Ability to provide a single image file which the application will attempt to locate duplicates of within a particular folder or drive.
